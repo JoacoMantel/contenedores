@@ -2,7 +2,11 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#2B6E5C">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Contenedores">
 <title>Contenedores · Panel de gestión</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -252,6 +256,120 @@
   th.num { text-align: right; }
   .orden { font-family: var(--mono); color: var(--ink-soft); }
 
+  /* ---------- Reportes de vecinos (vista del municipio) ---------- */
+  .aviso-rep {
+    position: absolute; top: -9px; left: -11px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px;
+    background: var(--mid); color: #fff; font-size: 9px; font-weight: 700; font-family: var(--mono);
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 1.5px var(--paper-raised);
+  }
+  .item .rep-linea { font-size: 0.7rem; color: #8A5A12; margin-top: 3px; }
+  .rep-lista { list-style: none; margin: 0; padding: 0; }
+  .rep-lista li { border-top: 1px solid var(--line); padding: 8px 0; font-size: 0.78rem; }
+  .rep-lista .r-tipo { font-weight: 600; }
+  .rep-lista .r-meta { color: var(--ink-soft); font-size: 0.72rem; }
+  .rep-lista .r-comentario { margin-top: 2px; }
+  .rep-lista button {
+    margin-top: 5px; background: none; border: 1px solid var(--accent); color: var(--accent);
+    border-radius: 4px; padding: 3px 8px; font-size: 0.72rem; font-weight: 600; cursor: pointer;
+  }
+  .etq-ejemplo { font-size: 0.64rem; color: var(--ink-soft); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; margin-left: 4px; }
+  .btn-vecinos {
+    background: var(--paper-raised); color: var(--ink); border: 1px solid var(--line); border-radius: 4px;
+    padding: 10px 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  }
+  .btn-vecinos:hover { border-color: var(--ink); }
+  .btn-vecinos svg { width: 14px; height: 16px; }
+
+  /* ---------- Vista para vecinos (formato app de celular) ---------- */
+  .app { position: fixed; inset: 0; z-index: 100; background: #D9D5C9; display: flex; align-items: center; justify-content: center; }
+  .app[hidden] { display: none; }
+  .app-marco {
+    position: relative; width: 100%; max-width: 420px; height: 100%; max-height: 860px;
+    background: var(--paper-raised); display: flex; flex-direction: column; overflow: hidden;
+    border-radius: 22px; box-shadow: 0 10px 40px rgba(30,42,40,0.25);
+  }
+  @media (max-width: 520px), (max-height: 700px) { .app-marco { max-width: none; max-height: none; border-radius: 0; box-shadow: none; } }
+  .app-barra { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); background: var(--paper-raised); }
+  .app-titulo { font-size: 1.05rem; font-weight: 700; }
+  .app-sub { font-size: 0.72rem; color: var(--ink-soft); margin-top: 1px; }
+  .app-link { background: none; border: 1px solid var(--line); border-radius: 16px; padding: 6px 11px; font-size: 0.74rem; font-weight: 600; color: var(--ink); cursor: pointer; }
+  .app-cuerpo { flex: 1; position: relative; min-height: 0; }
+  .app-pantalla { position: absolute; inset: 0; overflow-y: auto; }
+  .app-pantalla[hidden] { display: none; }
+  #vMapa { position: absolute; inset: 0; background: var(--paper); }
+  .app-flotante { position: absolute; left: 12px; right: 12px; z-index: 500; display: flex; gap: 8px; }
+  .app-flotante.arriba { top: 12px; }
+  .app-flotante.abajo { bottom: 30px; justify-content: center; }   /* deja ver el crédito de OpenStreetMap */
+  .app-boton {
+    background: var(--paper-raised); color: var(--ink); border: 1px solid var(--line); border-radius: 20px;
+    padding: 9px 14px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(30,42,40,0.15);
+  }
+  .app-boton.principal { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .app-aviso {
+    background: var(--paper-raised); border: 1px solid var(--line); border-left: 3px solid var(--mid); border-radius: 8px;
+    padding: 9px 11px; font-size: 0.76rem; box-shadow: 0 2px 8px rgba(30,42,40,0.12); flex: 1;
+  }
+  .app-aviso[hidden] { display: none; }
+  .v-marcador {
+    width: 30px; height: 30px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; font-family: var(--mono);
+  }
+  .v-marcador.con-reporte { outline: 2px solid var(--mid); outline-offset: 1px; }
+  .v-yo { width: 18px; height: 18px; border-radius: 50%; background: #2F5D8A; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(47,93,138,0.25); }
+  .app-nav { display: flex; border-top: 1px solid var(--line); background: var(--paper-raised); padding-bottom: env(safe-area-inset-bottom); }
+  .app-nav button {
+    flex: 1; background: none; border: none; padding: 8px 4px 9px; font-size: 0.7rem; color: var(--ink-soft); cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 3px; font-weight: 600;
+  }
+  .app-nav button svg { width: 20px; height: 20px; }
+  .app-nav button.activo { color: var(--accent); }
+  .app-seccion { padding: 14px 16px; }
+  .app-seccion h2 { font-size: 0.95rem; margin: 0 0 4px; }
+  .app-nota { font-size: 0.74rem; color: var(--ink-soft); margin: 0 0 10px; }
+  .tarjeta {
+    display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; background: var(--paper-raised);
+    border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 8px; cursor: pointer; color: var(--ink); font-size: 0.82rem;
+  }
+  .tarjeta.destacada { border: 2px solid var(--accent); }
+  .tarjeta .t-info { flex: 1; min-width: 0; }
+  .tarjeta .t-nombre { font-weight: 600; }
+  .tarjeta .t-dir { font-size: 0.74rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tarjeta .t-derecha { text-align: right; font-size: 0.74rem; color: var(--ink-soft); white-space: nowrap; }
+  .tarjeta .t-derecha b { display: block; font-family: var(--mono); color: var(--ink); font-size: 0.86rem; }
+  .estado-vecino { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; color: #fff; margin-top: 4px; }
+  .estrellas { color: #B7791F; letter-spacing: 1px; }
+  .hoja {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 600; max-height: 82%; overflow-y: auto;
+    background: var(--paper-raised); border-radius: 18px 18px 0 0; box-shadow: 0 -6px 24px rgba(30,42,40,0.2);
+    padding: 8px 16px 18px;
+  }
+  .hoja[hidden] { display: none; }
+  .hoja-asa { width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 2px auto 10px; }
+  .hoja-cerrar { position: absolute; top: 10px; right: 12px; background: none; border: none; font-size: 1.3rem; color: var(--ink-soft); cursor: pointer; }
+  .hoja h3 { margin: 0; font-size: 1.05rem; }
+  .hoja .h-dir { font-size: 0.78rem; color: var(--ink-soft); }
+  .hoja .h-barra { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 10px 0 4px; }
+  .hoja .h-barra i { display: block; height: 100%; }
+  .hoja .h-fila { font-size: 0.78rem; color: var(--ink-soft); margin: 6px 0; }
+  .hoja .h-alerta { background: #F3E3DF; border-left: 3px solid var(--high); padding: 8px 10px; font-size: 0.78rem; margin: 10px 0; border-radius: 4px; }
+  .hoja .h-avisos { background: #F6ECD9; border-left: 3px solid var(--mid); padding: 8px 10px; font-size: 0.78rem; margin: 10px 0; border-radius: 4px; }
+  .hoja .h-acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .hoja .h-acciones .ancho { grid-column: 1 / -1; }
+  .hoja .h-acciones a, .hoja .h-acciones button { text-align: center; text-decoration: none; border-radius: 10px; padding: 11px 8px; }
+  .opciones { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .opciones label { border: 1px solid var(--line); border-radius: 16px; padding: 7px 11px; font-size: 0.78rem; cursor: pointer; }
+  .opciones input { position: absolute; opacity: 0; pointer-events: none; }
+  .opciones input:checked + span { color: var(--accent); font-weight: 700; }
+  .opciones label:has(input:checked) { border-color: var(--accent); background: #E1EDE6; }
+  .opciones label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .hoja textarea { width: 100%; min-height: 60px; border: 1px solid var(--line); border-radius: 8px; padding: 8px; font: inherit; font-size: 0.8rem; background: #fff; resize: vertical; }
+  .elegir-estrellas { display: flex; gap: 4px; margin: 8px 0; }
+  .elegir-estrellas button { background: none; border: none; font-size: 2rem; line-height: 1; color: var(--line); cursor: pointer; padding: 0 2px; }
+  .elegir-estrellas button.llena { color: #B7791F; }
+  .gracias { background: #E1EDE6; border-left: 3px solid var(--low); padding: 10px 12px; font-size: 0.8rem; border-radius: 4px; margin-top: 10px; }
+  .mi-reporte { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; font-size: 0.8rem; }
+  .mi-reporte .m-estado { font-size: 0.7rem; font-weight: 700; }
+
   @media (max-width: 760px) {
     main { flex-direction: column; }
     aside { width: 100%; height: 240px; border-right: none; border-bottom: 1px solid var(--line); }
@@ -273,7 +391,12 @@
       <div>En alerta<strong id="totalAlerta">–</strong></div>
       <div>Promedio<strong id="promedio">–</strong></div>
       <div>Batería baja<strong id="totalBateria">–</strong></div>
+      <div>Reportes<strong id="totalReportes">–</strong></div>
     </div>
+    <button class="btn-vecinos" id="abrirVecinos" title="Cómo ve el sistema un vecino desde el celular">
+      <svg viewBox="0 0 14 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="1.5" y="1" width="11" height="14" rx="2"/><line x1="5.5" y1="12.5" x2="8.5" y2="12.5"/></svg>
+      Vista vecinos
+    </button>
     <button class="btn-stats" id="abrirStats" aria-haspopup="dialog">
       <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="9" width="3" height="6"/><rect x="6.5" y="5" width="3" height="10"/><rect x="12" y="1" width="3" height="14"/></svg>
       Ver estadísticas
@@ -289,6 +412,7 @@
       <button class="filtro" data-filtro="medio">Medio</button>
       <button class="filtro" data-filtro="bajo">Bajo</button>
       <button class="filtro" data-filtro="bateria">Batería baja</button>
+      <button class="filtro" data-filtro="reportes">Con reportes</button>
     </div>
     <div id="lista"></div>
     <div id="detalle" aria-live="polite"></div>
@@ -382,6 +506,41 @@
   </div>
 </section>
 
+<!-- Vista para vecinos: formato app de celular (se abre con el botón "Vista vecinos" o con ?vecinos) -->
+<div class="app" id="appVecinos" hidden>
+  <div class="app-marco" role="application" aria-label="Contenedores cerca, vista para vecinos">
+    <div class="app-barra">
+      <div>
+        <div class="app-titulo">Contenedores cerca</div>
+        <div class="app-sub" id="vSub">Zona piloto · datos de ejemplo</div>
+      </div>
+      <button class="app-link" id="irMunicipio" title="Volver al panel del municipio">Municipio</button>
+    </div>
+    <div class="app-cuerpo">
+      <section class="app-pantalla" id="pantMapa">
+        <div id="vMapa"></div>
+        <div class="app-flotante arriba"><div class="app-aviso" id="vAviso" role="status" hidden></div></div>
+        <div class="app-flotante abajo">
+          <button class="app-boton principal" id="vUbicar">Usar mi ubicación</button>
+          <button class="app-boton" id="vElegir">Elegir en el mapa</button>
+        </div>
+      </section>
+      <section class="app-pantalla" id="pantCerca" hidden>
+        <div class="app-seccion" id="vCerca"></div>
+      </section>
+      <section class="app-pantalla" id="pantReportes" hidden>
+        <div class="app-seccion" id="vMisReportes"></div>
+      </section>
+      <div class="hoja" id="vHoja" role="dialog" aria-modal="false" aria-label="Detalle del contenedor" hidden></div>
+    </div>
+    <nav class="app-nav" aria-label="Secciones">
+      <button data-pant="pantMapa" class="activo"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 5l5-2 6 2 5-2v12l-5 2-6-2-5 2z"/><path d="M7 3v12M13 5v12"/></svg>Mapa</button>
+      <button data-pant="pantCerca"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="8" r="3"/><path d="M10 18s6-5.2 6-10a6 6 0 0 0-12 0c0 4.8 6 10 6 10z"/></svg>Cerca mío</button>
+      <button data-pant="pantReportes"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 18V3"/><path d="M4 3h10l-2 3.5L14 10H4"/></svg>Mis reportes</button>
+    </nav>
+  </div>
+</div>
+
 <script>
 /*
   DATOS DE CONTENEDORES (de ejemplo)
@@ -425,6 +584,93 @@ const contenedores = [
 
 // Depósito municipal: desde donde sale y adonde vuelve el camión.
 const DEPOSITO = { lat: -34.6044, lng: -58.3883 };
+
+/*
+  REPORTES Y CALIFICACIONES DE VECINOS
+  ------------------------------------
+  Desde la vista para vecinos (formato app de celular) se puede avisar un
+  problema en un contenedor y calificarlo con estrellas. El municipio ve
+  esos reportes en su panel y decide:
+    - "Está lleno" y "Hay basura afuera": el contenedor se suma a la ruta
+      de recolección (aunque el sensor no marque alerta: puede estar fallando).
+    - "Está roto", "La tapa no abre", "Está sucio": quedan como
+      mantenimiento pendiente en la ficha del contenedor.
+  Cuando el problema se soluciona, el municipio lo marca como resuelto y el
+  vecino lo ve en "Mis reportes".
+
+  LIMITACIÓN DE LA DEMO: la página no tiene servidor, así que los reportes y
+  calificaciones se guardan solo en este navegador (localStorage). Se ven en
+  las dos vistas de la misma computadora o celular, pero no le llegan a
+  otra persona. En un piloto real se enviarían a un servidor del municipio.
+  No se guarda ningún dato personal: ni nombre, ni ubicación del vecino.
+*/
+const TIPOS_REPORTE = {
+  lleno:  { texto: 'Está lleno',                recolectar: true },
+  afuera: { texto: 'Hay basura afuera',         recolectar: true },
+  roto:   { texto: 'Está roto' },
+  tapa:   { texto: 'La tapa no abre' },
+  sucio:  { texto: 'Está sucio o con mal olor' },
+  otro:   { texto: 'Otro problema' }
+};
+const CLAVE_REPORTES = 'contenedores.reportes';
+const CLAVE_CALIFICACIONES = 'contenedores.calificaciones';
+// Dos reportes de ejemplo para que la demo no arranque vacía (se marcan "de ejemplo")
+const REPORTES_EJEMPLO = [
+  { id: 'ej1', contenedor: 'c08', tipo: 'afuera', comentario: 'Bolsas en la vereda desde anoche', fecha: Date.now() - 3 * 3600000, ejemplo: true },
+  { id: 'ej2', contenedor: 'c04', tipo: 'tapa', comentario: '', fecha: Date.now() - 26 * 3600000, ejemplo: true }
+];
+
+function leerGuardado(clave, siNoHay) {
+  try { const v = JSON.parse(localStorage.getItem(clave)); if (Array.isArray(v)) return v; } catch (e) {}
+  return siNoHay;
+}
+function guardar(clave, datos) {
+  try { localStorage.setItem(clave, JSON.stringify(datos)); return true; } catch (e) { return false; }
+}
+let reportes = leerGuardado(CLAVE_REPORTES, REPORTES_EJEMPLO.map(r => ({ ...r })));
+let calificaciones = leerGuardado(CLAVE_CALIFICACIONES, []);
+
+function reportesActivos(c) { return reportes.filter(r => r.contenedor === c.id && !r.resuelto); }
+function totalReportesActivos() { return reportes.filter(r => !r.resuelto).length; }
+
+function agregarReporte(c, tipo, comentario) {
+  reportes.push({ id: 'r' + Date.now(), contenedor: c.id, tipo, comentario: comentario.slice(0, 140), fecha: Date.now() });
+  return guardar(CLAVE_REPORTES, reportes);
+}
+function resolverReporte(id) {
+  const r = reportes.find(x => x.id === id);
+  if (r) { r.resuelto = Date.now(); guardar(CLAVE_REPORTES, reportes); }
+}
+// Una calificación por contenedor y por navegador: si se vuelve a calificar, se reemplaza
+function calificar(c, estrellas) {
+  calificaciones = calificaciones.filter(x => x.contenedor !== c.id);
+  calificaciones.push({ contenedor: c.id, estrellas, fecha: Date.now() });
+  return guardar(CLAVE_CALIFICACIONES, calificaciones);
+}
+// Promedio de estrellas: calificaciones de ejemplo (fijas, por contenedor) + la de este navegador
+function calificacion(c) {
+  const n = parseInt(c.id.slice(1), 10);
+  const cantEjemplo = 4 + (n * 5) % 9;
+  const promEjemplo = 3 + ((n * 7) % 16) / 10;   // entre 3,0 y 4,5
+  const mia = calificaciones.find(x => x.contenedor === c.id);
+  const total = cantEjemplo + (mia ? 1 : 0);
+  return { promedio: (promEjemplo * cantEjemplo + (mia ? mia.estrellas : 0)) / total, total, cantEjemplo, mia };
+}
+function textoEstrellas(prom) {
+  const llenas = Math.round(prom);
+  return '★'.repeat(llenas) + '☆'.repeat(5 - llenas);
+}
+function haceCuanto(ms) {
+  const min = Math.max(0, Math.round((Date.now() - ms) / 60000));
+  if (min < 1) return 'recién';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  return `hace ${d} día${d > 1 ? 's' : ''}`;
+}
+// Para mostrar texto escrito por vecinos sin que se interprete como HTML
+function esc(t) { return String(t).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]); }
 
 /*
   Para el mapa esquemático (el que se usa sin internet) se convierten
@@ -473,6 +719,7 @@ function iconoBateria(b) {
 function pasaFiltro(c) {
   if (filtroActual === "todos") return true;
   if (filtroActual === "bateria") return bateriaBaja(c);
+  if (filtroActual === "reportes") return reportesActivos(c).length > 0;
   return nivel(c.llenado) === filtroActual;
 }
 
@@ -493,6 +740,8 @@ function motivoRecoleccion(c) {
   if (c.llenado >= 80) return "en alerta";
   const horas = (80 - c.llenado) / c.ritmo;
   if (horas <= HORAS_ANTICIPACION) return "alerta en " + formatoHoras(horas);
+  const rep = reportesActivos(c).find(r => TIPOS_REPORTE[r.tipo]?.recolectar);
+  if (rep) return "reporte de vecinos: " + TIPOS_REPORTE[rep.tipo].texto.toLowerCase();
   return null;
 }
 function metrosEntre(a, b) {
@@ -535,6 +784,8 @@ let rutaCalles = null;        // recorrido real de las paradas pendientes
 let rutaCallesTodos = null;   // recorrido real pasando por los 14 (para comparar)
 let estadoRutaCalles = 'sin-pedir';   // sin-pedir | cargando | ok | error
 let pedidoRuta = 0;          // cada pedido nuevo invalida la respuesta de los anteriores
+let claveRutaPedida = '';     // qué contenedores tenía el último pedido de recorrido
+function claveRuta() { return contenedores.filter(c => motivoRecoleccion(c)).map(c => c.id).join(); }
 
 // Respeta el límite del servidor: deja al menos 1,2 s entre un pedido y otro
 let proximoTurnoOSRM = 0;
@@ -610,6 +861,7 @@ async function pedirRutaCalles() {
   const pendientes = contenedores.filter(c => motivoRecoleccion(c));
   if (!pendientes.length) return;
   estadoRutaCalles = 'cargando';
+  claveRutaPedida = claveRuta();
   const pedido = ++pedidoRuta;
   renderRutaMapa();
   await ajustarACalles();   // primero se ubican los contenedores sobre la calle
@@ -755,11 +1007,19 @@ function contenidoMarcador(c) {
   return `
       <span class="punto" style="background:${colorSegunLlenado(c.llenado)};"></span>
       ${bateriaBaja(c) ? '<span class="aviso-bat" title="Batería baja">!</span>' : ''}
+      ${reportesActivos(c).length ? `<span class="aviso-rep" title="Reportes de vecinos pendientes">${reportesActivos(c).length}</span>` : ''}
       <div class="tooltip">
         <div class="t-nombre">${c.nombre}, ${c.direccion}</div>
         <div class="t-dato">${c.llenado}% · ${estadoTexto(c.llenado)} · lleno en ${formatoHoras(horasHastaLleno(c))}</div>
         <div class="t-dato" style="color:${colorBateria(c.bateria)}">Batería ${c.bateria}% · ~${diasRestantes(c)} días</div>
+        ${reportesActivos(c).length ? `<div class="t-dato" style="color:#8A5A12">${lineaReportes(c)}</div>` : ''}
       </div>`;
+}
+function lineaReportes(c) {
+  const activos = reportesActivos(c);
+  if (!activos.length) return '';
+  const tipos = [...new Set(activos.map(r => TIPOS_REPORTE[r.tipo]?.texto || 'Otro problema'))];
+  return `${activos.length} reporte${activos.length > 1 ? 's' : ''} de vecinos: ${tipos.join(', ').toLowerCase()}`;
 }
 
 function renderMapa() {
@@ -868,6 +1128,7 @@ function cambiarModo(modo) {
       contenedores.forEach(c => marcadoresReales[c.id]?.setLatLng([c.lat, c.lng]));
       marcadorDeposito.setLatLng([DEPOSITO.lat, DEPOSITO.lng]);
       if (!rutaCalles) renderRutaMapa();   // el trazado aproximado usa las posiciones nuevas
+      actualizarApp();                     // la vista vecinos también corre sus marcadores
     });
   }
 }
@@ -894,6 +1155,7 @@ function renderLista() {
       <div class="info">
         <div class="nombre">${c.nombre} ${etiquetaVivo(c)}</div>
         <div class="direccion">${c.direccion}</div>
+        ${reportesActivos(c).length ? `<div class="rep-linea">${lineaReportes(c)}</div>` : ''}
         <div class="barra"><i style="width:${c.llenado}%;background:${colorSegunLlenado(c.llenado)};"></i></div>
       </div>
       <div class="derecha-item">
@@ -1000,7 +1262,6 @@ function ritmoMedido(lecturas) {
 
 async function leerThingSpeak() {
   const c = contenedorVivo, v = c.vivo;
-  const enRutaAntes = !!motivoRecoleccion(c);
   const ctrl = new AbortController();
   const corte = setTimeout(() => ctrl.abort(), 10000);
   try {
@@ -1035,15 +1296,18 @@ async function leerThingSpeak() {
   } finally {
     clearTimeout(corte);
   }
-  refrescarPanel(enRutaAntes !== !!motivoRecoleccion(c));
+  refrescarPanel();
 }
 
 // Vuelve a dibujar todo lo que depende de los datos de los contenedores
-function refrescarPanel(cambioLaRuta) {
+// (datos en vivo, reportes de vecinos) en las dos vistas
+function refrescarPanel() {
   const sub = document.getElementById('subtitulo');
   if (contenedorVivo?.vivo.estado === 'ok') sub.textContent = `Monitoreo de nivel de llenado (datos de ejemplo; ${contenedorVivo.nombre} en vivo desde Wokwi)`;
   else sub.textContent = 'Monitoreo de nivel de llenado (datos de ejemplo)';
-  if (cambioLaRuta) { rutaCalles = null; estadoRutaCalles = 'sin-pedir'; pedidoRuta++; }
+  // si cambió qué contenedores hay que recolectar, el recorrido por las calles ya no vale
+  if (estadoRutaCalles !== 'sin-pedir' && claveRutaPedida !== claveRuta()) { rutaCalles = null; estadoRutaCalles = 'sin-pedir'; pedidoRuta++; }
+  if (mostrandoRuta) pedirRutaCalles();   // si la ruta está a la vista, se vuelve a pedir por las calles
   actualizarResumen();
   renderMapa();
   renderLista();
@@ -1053,6 +1317,7 @@ function refrescarPanel(cambioLaRuta) {
     if (document.querySelector('aside').classList.contains('viendo-detalle')) abrirDetalle(seleccionado);
   }
   if (document.getElementById('panelStats').classList.contains('abierto')) renderEstadisticas();
+  actualizarApp();
 }
 
 // Textos que aclaran de dónde sale cada dato del contenedor conectado
@@ -1178,10 +1443,38 @@ function abrirDetalle(id) {
       ${parada >= 0
         ? `Está en la ruta de recolección de hoy: <strong>parada ${parada + 1} de ${ruta.orden.length}</strong> (${motivoRecoleccion(c)}).${bateriaBaja(c) ? ' Aprovechar la parada para cambiar la batería.' : ''}`
         : `No necesita recolección por ahora.${bateriaBaja(c) ? ' Ojo: la batería está baja y no hay una parada prevista; conviene programar el cambio.' : ''}`}
-    </div>`;
+    </div>
+    ${bloqueVecinos(c)}`;
   document.getElementById('volverLista').addEventListener('click', cerrarDetalle);
+  document.querySelectorAll('#detalle [data-resolver]').forEach(b => b.addEventListener('click', () => {
+    resolverReporte(b.dataset.resolver);
+    refrescarPanel();
+  }));
   document.querySelector('aside').classList.add('viendo-detalle');
   document.getElementById('detalle').scrollTop = 0;
+}
+
+// Bloque de la ficha del municipio: calificación y reportes pendientes de los vecinos
+function bloqueVecinos(c) {
+  const cal = calificacion(c);
+  const activos = reportesActivos(c).sort((a, b) => b.fecha - a.fecha);
+  const items = activos.map(r => {
+    const t = TIPOS_REPORTE[r.tipo] || TIPOS_REPORTE.otro;
+    return `<li>
+      <div class="r-tipo">${t.texto}${r.ejemplo ? '<span class="etq-ejemplo">de ejemplo</span>' : ''}</div>
+      <div class="r-meta">${haceCuanto(r.fecha)} · ${t.recolectar ? 'se sumó a la ruta de recolección' : 'mantenimiento pendiente'}</div>
+      ${r.comentario ? `<div class="r-comentario">"${esc(r.comentario)}"</div>` : ''}
+      <button data-resolver="${r.id}">Marcar resuelto</button>
+    </li>`;
+  }).join('');
+  return `
+    <div class="det-bloque">
+      <h3>Vecinos</h3>
+      <p class="nota"><span class="estrellas">${textoEstrellas(cal.promedio)}</span> ${cal.promedio.toFixed(1).replace('.', ',')}
+        · ${cal.total} calificaciones (${cal.cantEjemplo} de ejemplo${cal.mia ? ' y 1 de este navegador' : ''})</p>
+      ${activos.length ? `<ul class="rep-lista">${items}</ul>` : '<p class="nota">Sin reportes pendientes.</p>'}
+      <p class="nota">Demo: los reportes hechos desde la vista vecinos se guardan solo en este navegador.</p>
+    </div>`;
 }
 
 function cerrarDetalle() {
@@ -1205,6 +1498,10 @@ function actualizarResumen() {
   const el = document.getElementById('totalBateria');
   el.textContent = baja;
   el.style.color = baja ? '#B23B3B' : '';
+  const rep = totalReportesActivos();
+  const er = document.getElementById('totalReportes');
+  er.textContent = rep;
+  er.style.color = rep ? '#8A5A12' : '';
 }
 
 document.querySelectorAll('.filtro').forEach(b => {
@@ -1381,6 +1678,313 @@ document.getElementById('btnModo').addEventListener('click', () => {
 });
 document.getElementById('cerrarAviso').addEventListener('click', () => mostrarAviso(null));
 
+/*
+  VISTA PARA VECINOS (formato app de celular)
+  -------------------------------------------
+  Pensada para que un vecino, desde el celular, encuentre el contenedor
+  más cercano con lugar, sepa cómo llegar y avise si hay un problema.
+  Se abre con el botón "Vista vecinos" o con la dirección ?vecinos (por
+  ejemplo, desde un código QR pegado en cada contenedor).
+  Usa los mismos datos que el panel del municipio, pero muestra solo lo que
+  le sirve al vecino: nada de batería, ruta del camión ni estadísticas.
+
+  PRIVACIDAD: la ubicación del vecino se usa solo dentro de su navegador
+  para calcular distancias. No se envía a ningún lado ni se guarda.
+*/
+const app = document.getElementById('appVecinos');
+let vMapa = null, vCapa = null, vMarcadorYo = null;
+let vPos = null;              // { lat, lng, origen: 'gps' | 'elegida' }
+let vEligiendo = false;
+let vHojaAbierta = null;      // id del contenedor abierto en la hoja
+let vFormulario = null;       // null | 'reporte' | 'calificar'
+let vGracias = '';
+
+function metrosLineaRecta(a, b) {
+  const R = 6371000, rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function formatoDistancia(m) { return m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`; }
+
+// Estado en palabras simples, con los mismos umbrales que usa el municipio
+function estadoVecino(c) {
+  if (c.llenado >= 80) return { texto: 'Lleno: usá otro', color: COLOR.alerta, conLugar: false };
+  if (c.llenado >= 50) return { texto: 'Se está llenando', color: COLOR.medio, conLugar: true };
+  return { texto: 'Con lugar', color: COLOR.bajo, conLugar: true };
+}
+function origenDato(c) {
+  if (c.vivo?.estado === 'ok') return `Medido por el sensor ${haceCuanto(c.vivo.ultimaLectura)}`;
+  return 'Dato de ejemplo';
+}
+// Contenedores ordenados por distancia (si se sabe dónde está el vecino)
+function ordenadosPorDistancia() {
+  const lista = contenedores.map(c => ({ c, m: vPos ? metrosLineaRecta(vPos, c) : null }));
+  if (vPos) lista.sort((a, b) => a.m - b.m);
+  return lista;
+}
+function masCercanoConLugar(excepto) {
+  return ordenadosPorDistancia().find(x => x.c !== excepto && estadoVecino(x.c).conLugar);
+}
+function avisoApp(texto) {
+  const a = document.getElementById('vAviso');
+  a.hidden = !texto;
+  a.textContent = texto || '';
+}
+
+function abrirApp() {
+  app.hidden = false;
+  const p = new URLSearchParams(location.search);
+  if (!p.has('vecinos')) { p.set('vecinos', ''); history.replaceState(null, '', '?' + p.toString().replace(/(^|&)vecinos=(?=&|$)/, '$1vecinos')); }
+  iniciarMapaApp();
+  actualizarApp();
+  if (vMapa) setTimeout(() => { vMapa.invalidateSize(); if (!vPos) encuadrarApp(); }, 50);
+}
+function cerrarApp() {
+  app.hidden = true;
+  const p = new URLSearchParams(location.search);
+  p.delete('vecinos');
+  history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p : ''));
+  if (modoMapa === 'real' && mapaReal) {
+    mapaReal.invalidateSize();
+    mapaReal.fitBounds(L.latLngBounds([...contenedores, DEPOSITO].map(p => [p.lat, p.lng])), { padding: [40, 40] });
+  }
+}
+
+function iniciarMapaApp() {
+  if (vMapa) return true;
+  if (typeof L === 'undefined' || location.protocol === 'file:') {
+    avisoApp('El mapa no está disponible (sin conexión o archivo abierto localmente). Usá "Cerca mío" para ver la lista.');
+    document.getElementById('vElegir').hidden = true;
+    return false;
+  }
+  vMapa = L.map('vMapa', { zoomControl: false });
+  const capa = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(vMapa);
+  let cargadas = 0;
+  capa.on('tileload', () => { cargadas++; });
+  setTimeout(() => { if (!cargadas) avisoApp('No se pudo cargar el mapa. Usá "Cerca mío" para ver la lista.'); }, 8000);
+  vCapa = L.layerGroup().addTo(vMapa);
+  vMapa.on('click', e => {
+    if (!vEligiendo) return;
+    vEligiendo = false;
+    fijarPosicion(e.latlng.lat, e.latlng.lng, 'elegida');
+  });
+  encuadrarApp();
+  return true;
+}
+function encuadrarApp() {
+  if (vMapa) vMapa.fitBounds(L.latLngBounds(contenedores.map(c => [c.lat, c.lng])), { padding: [30, 30] });
+}
+
+function fijarPosicion(lat, lng, origen) {
+  vPos = { lat, lng, origen };
+  const zona = metrosLineaRecta(vPos, DEPOSITO);
+  if (zona > 3000) avisoApp(`Estás a ${formatoDistancia(zona)} de la zona piloto, así que las distancias no te van a servir. Para probar, tocá "Elegir en el mapa" y marcá un punto de la zona.`);
+  else avisoApp(origen === 'elegida' ? 'Ubicación elegida en el mapa. Las distancias son en línea recta.' : '');
+  if (vMapa) {
+    if (!vMarcadorYo) vMarcadorYo = L.marker([lat, lng], { icon: L.divIcon({ className: 'icono-leaflet', iconSize: [18, 18], iconAnchor: [9, 9], html: '<div class="v-yo" title="Vos estás acá"></div>' }), interactive: false, zIndexOffset: 1000 }).addTo(vMapa);
+    else vMarcadorYo.setLatLng([lat, lng]);
+    if (zona <= 3000) {
+      const cerca = ordenadosPorDistancia().slice(0, 3).map(x => [x.c.lat, x.c.lng]);
+      vMapa.fitBounds(L.latLngBounds([[lat, lng], ...cerca]), { padding: [50, 50], maxZoom: 17 });
+    }
+  }
+  actualizarApp();
+}
+
+document.getElementById('vUbicar').addEventListener('click', () => {
+  if (!navigator.geolocation) { avisoApp('Este navegador no permite obtener la ubicación. Probá con "Elegir en el mapa".'); return; }
+  avisoApp('Buscando tu ubicación…');
+  navigator.geolocation.getCurrentPosition(
+    p => fijarPosicion(p.coords.latitude, p.coords.longitude, 'gps'),
+    () => avisoApp('No se pudo obtener tu ubicación (permiso denegado o sin señal). Probá con "Elegir en el mapa".'),
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  );
+});
+document.getElementById('vElegir').addEventListener('click', () => {
+  vEligiendo = true;
+  cerrarHoja();
+  avisoApp('Tocá el mapa en el lugar donde estás.');
+});
+
+function renderMarcadoresApp() {
+  if (!vMapa) return;
+  vCapa.clearLayers();
+  contenedores.forEach(c => {
+    const est = estadoVecino(c);
+    const m = L.marker([c.lat, c.lng], {
+      icon: L.divIcon({ className: 'icono-leaflet', iconSize: [30, 30], iconAnchor: [15, 15],
+        html: `<div class="v-marcador ${reportesActivos(c).length ? 'con-reporte' : ''}" style="background:${est.color}" title="${c.nombre}: ${est.texto}">${numeroDe(c)}</div>` }),
+      keyboard: false
+    }).addTo(vCapa);
+    m.on('click', () => { if (!vEligiendo) abrirHoja(c.id); });
+  });
+}
+
+function renderCerca() {
+  const cercano = masCercanoConLugar();
+  const tarjetas = ordenadosPorDistancia().map(({ c, m }) => {
+    const est = estadoVecino(c), cal = calificacion(c);
+    return `<button class="tarjeta ${vPos && cercano && cercano.c === c ? 'destacada' : ''}" data-abrir="${c.id}">
+      <div class="t-info">
+        <div class="t-nombre">${c.nombre}</div>
+        <div class="t-dir">${c.direccion}</div>
+        <span class="estado-vecino" style="background:${est.color}">${est.texto}</span>
+        ${reportesActivos(c).length ? '<span class="t-dir" style="color:#8A5A12"> · con avisos de vecinos</span>' : ''}
+      </div>
+      <div class="t-derecha">${m !== null ? `<b>${formatoDistancia(m)}</b>` : ''}<span class="estrellas">★</span> ${cal.promedio.toFixed(1).replace('.', ',')}</div>
+    </button>`;
+  }).join('');
+  document.getElementById('vCerca').innerHTML = `
+    <h2>${vPos ? 'Contenedores cerca tuyo' : 'Contenedores de la zona'}</h2>
+    <p class="app-nota">${vPos
+      ? (cercano ? `El más cercano con lugar es el <strong>${cercano.c.nombre}</strong>, a ${formatoDistancia(cercano.m)} (en línea recta).` : 'No hay contenedores con lugar en este momento.')
+      : 'Para ordenarlos por cercanía, en el Mapa tocá "Usar mi ubicación" o "Elegir en el mapa". Tu ubicación no sale de tu celular.'}</p>
+    ${tarjetas}`;
+  document.querySelectorAll('#vCerca [data-abrir]').forEach(b => b.addEventListener('click', () => abrirHoja(b.dataset.abrir)));
+}
+
+function renderMisReportes() {
+  const mios = reportes.filter(r => !r.ejemplo).sort((a, b) => b.fecha - a.fecha);
+  document.getElementById('vMisReportes').innerHTML = `
+    <h2>Mis reportes</h2>
+    <p class="app-nota">Los avisos que mandaste y si el municipio ya los resolvió.</p>
+    ${mios.length ? mios.map(r => {
+      const c = contenedores.find(x => x.id === r.contenedor);
+      return `<div class="mi-reporte">
+        <div class="m-estado" style="color:${r.resuelto ? COLOR.bajo : '#8A5A12'}">${r.resuelto ? 'Resuelto ' + haceCuanto(r.resuelto) : 'Pendiente'}</div>
+        <div><strong>${(TIPOS_REPORTE[r.tipo] || TIPOS_REPORTE.otro).texto}</strong> · ${c ? c.nombre : ''}</div>
+        <div class="app-nota" style="margin:0">${haceCuanto(r.fecha)}${r.comentario ? ` · "${esc(r.comentario)}"` : ''}</div>
+      </div>`;
+    }).join('') : '<p class="app-nota">Todavía no mandaste ningún reporte. Tocá un contenedor en el mapa y después "Reportar un problema".</p>'}
+    <p class="app-nota">Demo: tus reportes y calificaciones se guardan solo en este navegador. En un piloto real se enviarían al municipio.</p>`;
+}
+
+function abrirHoja(id) {
+  if (vHojaAbierta !== id) { vFormulario = null; vGracias = ''; }
+  vHojaAbierta = id;
+  renderHoja();
+}
+function cerrarHoja() {
+  vHojaAbierta = null; vFormulario = null; vGracias = '';
+  document.getElementById('vHoja').hidden = true;
+}
+
+function renderHoja() {
+  const hoja = document.getElementById('vHoja');
+  const c = contenedores.find(x => x.id === vHojaAbierta);
+  if (!c) { hoja.hidden = true; return; }
+  const est = estadoVecino(c), cal = calificacion(c);
+  const dist = vPos ? metrosLineaRecta(vPos, c) : null;
+  const alternativa = !est.conLugar ? masCercanoConLugar(c) : null;
+  const tipos = [...new Set(reportesActivos(c).map(r => (TIPOS_REPORTE[r.tipo] || TIPOS_REPORTE.otro).texto))];
+  const desde = vPos ? `${vPos.lat.toFixed(5)},${vPos.lng.toFixed(5)}` : '';
+  const comoLlegar = `https://www.openstreetmap.org/directions?engine=fossgis_osrm_foot&route=${encodeURIComponent(desde + ';' + c.lat.toFixed(5) + ',' + c.lng.toFixed(5))}`;
+
+  let formulario = '';
+  if (vFormulario === 'reporte') {
+    formulario = `
+      <form id="vFormReporte" style="margin-top:12px">
+        <strong style="font-size:0.85rem">¿Qué pasa con este contenedor?</strong>
+        <div class="opciones">${Object.entries(TIPOS_REPORTE).map(([k, t]) =>
+          `<label><input type="radio" name="tipo" value="${k}" required><span>${t.texto}</span></label>`).join('')}</div>
+        <textarea name="comentario" maxlength="140" placeholder="Comentario opcional (máx. 140 letras). No pongas datos personales."></textarea>
+        <div class="h-acciones">
+          <button type="button" class="app-boton" id="vCancelar">Cancelar</button>
+          <button type="submit" class="app-boton principal">Enviar reporte</button>
+        </div>
+      </form>`;
+  } else if (vFormulario === 'calificar') {
+    const actual = cal.mia ? cal.mia.estrellas : 0;
+    formulario = `
+      <div style="margin-top:12px">
+        <strong style="font-size:0.85rem">¿Cómo encontraste este contenedor?</strong>
+        <div class="app-nota" style="margin:2px 0 0">Limpieza, estado y si fue fácil usarlo.</div>
+        <div class="elegir-estrellas" role="group" aria-label="Calificación de 1 a 5 estrellas">${[1, 2, 3, 4, 5].map(n =>
+          `<button type="button" data-estrellas="${n}" class="${n <= actual ? 'llena' : ''}" aria-label="${n} estrella${n > 1 ? 's' : ''}">★</button>`).join('')}</div>
+        <div class="h-acciones"><button type="button" class="app-boton ancho" id="vCancelar">Cancelar</button></div>
+      </div>`;
+  }
+
+  hoja.innerHTML = `
+    <div class="hoja-asa"></div>
+    <button class="hoja-cerrar" id="vCerrarHoja" aria-label="Cerrar">×</button>
+    <h3>${c.nombre}</h3>
+    <div class="h-dir">${c.direccion}${dist !== null ? ` · a ${formatoDistancia(dist)}` : ''}</div>
+    <span class="estado-vecino" style="background:${est.color}">${est.texto}</span>
+    <div class="h-barra"><i style="width:${c.llenado}%;background:${est.color}"></i></div>
+    <div class="h-fila">${c.llenado}% lleno · ${origenDato(c)}</div>
+    <div class="h-fila"><span class="estrellas">${textoEstrellas(cal.promedio)}</span> ${cal.promedio.toFixed(1).replace('.', ',')} · ${cal.total} calificaciones${cal.mia ? ` (la tuya: ${cal.mia.estrellas}★)` : ''}</div>
+    ${alternativa ? `<div class="h-alerta">Está lleno. El más cercano con lugar es el <strong>${alternativa.c.nombre}</strong>${alternativa.m !== null ? `, a ${formatoDistancia(alternativa.m)}` : ''}.
+      <br><button class="app-boton" style="margin-top:6px" data-abrir="${alternativa.c.id}">Ver ${alternativa.c.nombre}</button></div>` : ''}
+    ${tipos.length ? `<div class="h-avisos">Otros vecinos avisaron: ${tipos.join(', ').toLowerCase()}. El municipio ya lo tiene registrado.</div>` : ''}
+    ${vGracias ? `<div class="gracias">${vGracias}</div>` : ''}
+    ${formulario || `
+    <div class="h-acciones">
+      <a class="app-boton principal ancho" href="${comoLlegar}" target="_blank" rel="noopener">Cómo llegar (a pie)</a>
+      <button class="app-boton" id="vReportar">Reportar un problema</button>
+      <button class="app-boton" id="vCalificar">${cal.mia ? 'Cambiar calificación' : 'Calificar'}</button>
+    </div>`}`;
+  hoja.hidden = false;
+
+  document.getElementById('vCerrarHoja').addEventListener('click', cerrarHoja);
+  hoja.querySelector('[data-abrir]')?.addEventListener('click', e => {
+    abrirHoja(e.currentTarget.dataset.abrir);
+    const otro = contenedores.find(x => x.id === vHojaAbierta);
+    if (vMapa && otro) vMapa.panTo([otro.lat, otro.lng]);
+  });
+  document.getElementById('vReportar')?.addEventListener('click', () => { vFormulario = 'reporte'; vGracias = ''; renderHoja(); });
+  document.getElementById('vCalificar')?.addEventListener('click', () => { vFormulario = 'calificar'; vGracias = ''; renderHoja(); });
+  document.getElementById('vCancelar')?.addEventListener('click', () => { vFormulario = null; renderHoja(); });
+  document.getElementById('vFormReporte')?.addEventListener('submit', e => {
+    e.preventDefault();
+    const datos = new FormData(e.target);
+    const ok = agregarReporte(c, datos.get('tipo'), (datos.get('comentario') || '').trim());
+    vFormulario = null;
+    vGracias = '¡Gracias por avisar! El municipio lo ve en su panel y te avisamos en "Mis reportes" cuando lo resuelva.'
+      + (ok ? ' (Demo: se guarda solo en este navegador.)' : ' (Demo: este navegador no permite guardar, así que se pierde al recargar.)');
+    refrescarPanel();
+  });
+  hoja.querySelectorAll('[data-estrellas]').forEach(b => b.addEventListener('click', () => {
+    const ok = calificar(c, Number(b.dataset.estrellas));
+    vFormulario = null;
+    vGracias = '¡Gracias por calificar!' + (ok ? '' : ' (Demo: este navegador no permite guardar, así que se pierde al recargar.)');
+    refrescarPanel();
+  }));
+}
+
+// Redibuja la app si está abierta (la llama refrescarPanel cuando cambian los datos)
+function actualizarApp() {
+  if (app.hidden) return;
+  document.getElementById('vSub').textContent = contenedorVivo?.vivo.estado === 'ok'
+    ? `Zona piloto · ${contenedorVivo.nombre} en vivo, el resto de ejemplo`
+    : 'Zona piloto · datos de ejemplo';
+  renderMarcadoresApp();
+  renderCerca();
+  renderMisReportes();
+  if (vHojaAbierta) renderHoja();
+}
+
+document.querySelectorAll('.app-nav button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.app-nav button').forEach(x => x.classList.toggle('activo', x === b));
+  document.querySelectorAll('.app-pantalla').forEach(p => { p.hidden = p.id !== b.dataset.pant; });
+  if (b.dataset.pant === 'pantMapa' && vMapa) setTimeout(() => vMapa.invalidateSize(), 0);
+  else cerrarHoja();
+}));
+document.getElementById('abrirVecinos').addEventListener('click', abrirApp);
+document.getElementById('irMunicipio').addEventListener('click', cerrarApp);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !app.hidden && vHojaAbierta) cerrarHoja(); });
+
+// Si la vista vecinos está abierta en otra pestaña o ventana, los cambios llegan acá
+window.addEventListener('storage', e => {
+  if (e.key !== CLAVE_REPORTES && e.key !== CLAVE_CALIFICACIONES) return;
+  reportes = leerGuardado(CLAVE_REPORTES, reportes);
+  calificaciones = leerGuardado(CLAVE_CALIFICACIONES, calificaciones);
+  refrescarPanel();
+});
+
 actualizarResumen();
 if (location.protocol === 'file:') {
   cambiarModo('esquema');
@@ -1392,6 +1996,7 @@ if (contenedorVivo) {
   leerThingSpeak();
   setInterval(leerThingSpeak, THINGSPEAK.consultarCadaMin * 60000);
 }
+if (new URLSearchParams(location.search).has('vecinos')) abrirApp();
 </script>
 </body>
 </html>

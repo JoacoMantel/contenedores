@@ -54,6 +54,15 @@ El sistema tiene dos partes:
   tiempo de manejo y el ahorro frente a pasar por los 14.
 - **Panel de estadísticas**: indicadores, distribución por estado, llenado por
   contenedor, promedio de 24 h (simulado), baterías y orden sugerido.
+- **Vista para vecinos** (formato app de celular): botón "Vista vecinos" o
+  dirección `?vecinos` (sirve para un QR en cada contenedor). Mapa, "Cerca mío"
+  (ordena por distancia con la ubicación del celular, que no sale del
+  navegador), cómo llegar a pie (OpenStreetMap), reportar un problema y
+  calificar con estrellas. Los reportes "Está lleno" y "Hay basura afuera"
+  suman el contenedor a la ruta; "roto", "tapa", "sucio" quedan como
+  mantenimiento. El municipio los ve en la ficha y los marca como resueltos.
+  Limitación de la demo: reportes y calificaciones se guardan solo en el
+  navegador (localStorage); hay 2 reportes y calificaciones de ejemplo.
 - **Batería**: umbral de batería baja en 20%. Autonomía estimada con una 18650
   (~2400 mAh útiles) y un consumo de ~15 mAh/día (deep sleep + un envío cada
   15 min), o sea ~160 días por carga.
@@ -78,8 +87,8 @@ El sistema tiene dos partes:
    paradas por día, contenedores desbordados.
 3. **Estado del sensor y calidad del dato**: marcar contenedores sin lectura
    reciente o con falla del sensor (el código de Wokwi ya contempla "SIN DATO").
-4. **Reportes de vecinos**: poder avisar "basura fuera del contenedor" o
-   "contenedor roto" y verlo en el mapa (participación ciudadana).
+4. ~~Reportes de vecinos~~ **(hecho, versión demo)**: falta un servidor para
+   que los reportes le lleguen de verdad al municipio.
 5. Posible: exportar datos a CSV y ajustar la accesibilidad.
 
 ## Forma de trabajo
