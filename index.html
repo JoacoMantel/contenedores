@@ -426,7 +426,11 @@ const DEPOSITO = { lat: -34.6044, lng: -58.3883 };
 /*
   Para el mapa esquemático (el que se usa sin internet) se convierten
   las coordenadas en posiciones relativas dentro del dibujo (0 a 1).
+  Después cada punto se corre a la calle dibujada más cercana, así ningún
+  contenedor queda en el medio de una manzana.
 */
+// Calles del dibujo (en las unidades del viewBox 800 × 500 del SVG #esquema)
+const CALLES_ESQUEMA = { horizontales: [50, 130, 300, 420], verticales: [80, 200, 340, 480, 640, 740] };
 (function proyectarEsquema() {
   const puntos = [...contenedores, DEPOSITO];
   const lats = puntos.map(p => p.lat), lngs = puntos.map(p => p.lng);
@@ -436,6 +440,11 @@ const DEPOSITO = { lat: -34.6044, lng: -58.3883 };
   puntos.forEach(p => {
     p.x = margen + (1 - 2 * margen) * (p.lng - minLng) / ((maxLng - minLng) || 1);
     p.y = margen + (1 - 2 * margen) * (maxLat - p.lat) / ((maxLat - minLat) || 1);
+    // se lo lleva a la calle dibujada más cercana (no al interior de la manzana)
+    const px = p.x * 800, py = p.y * 500;
+    const hy = CALLES_ESQUEMA.horizontales.reduce((a, b) => Math.abs(b - py) < Math.abs(a - py) ? b : a);
+    const vx = CALLES_ESQUEMA.verticales.reduce((a, b) => Math.abs(b - px) < Math.abs(a - px) ? b : a);
+    if (Math.abs(hy - py) < Math.abs(vx - px)) p.y = hy / 500; else p.x = vx / 800;
   });
 })();
 
@@ -523,9 +532,54 @@ let rutaCalles = null;        // recorrido real de las paradas pendientes
 let rutaCallesTodos = null;   // recorrido real pasando por los 14 (para comparar)
 let estadoRutaCalles = 'sin-pedir';   // sin-pedir | cargando | ok | error
 
+// Respeta el límite del servidor: deja al menos 1,2 s entre un pedido y otro
+let proximoTurnoOSRM = 0;
+async function turnoOSRM() {
+  const ahora = Date.now();
+  const turno = Math.max(ahora, proximoTurnoOSRM);
+  proximoTurnoOSRM = turno + 1200;
+  if (turno > ahora) await new Promise(r => setTimeout(r, turno - ahora));
+}
+
+/*
+  CONTENEDORES SOBRE LA CALLE
+  ---------------------------
+  Las coordenadas de ejemplo son aproximadas y algunas caen adentro de
+  una manzana (en el pulmón), donde en la realidad no puede haber un
+  contenedor. Con un solo pedido al servicio "table" de OSRM se obtiene,
+  para cada punto, el lugar más cercano sobre una calle por la que puede
+  pasar el camión, y el marcador se corre ahí.
+  Si OSRM no responde, quedan las coordenadas originales. Con coordenadas
+  reales medidas en la calle este ajuste casi no mueve nada.
+*/
+let promesaAjusteCalles = null;
+function ajustarACalles() {
+  if (!promesaAjusteCalles) promesaAjusteCalles = (async () => {
+    const puntos = [DEPOSITO, ...contenedores];
+    const coords = puntos.map(p => `${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';');
+    const ctrl = new AbortController();
+    const corte = setTimeout(() => ctrl.abort(), 12000);
+    try {
+      await turnoOSRM();
+      const resp = await fetch(`https://router.project-osrm.org/table/v1/driving/${coords}?destinations=0`, { signal: ctrl.signal });
+      const datos = await resp.json();
+      if (datos.code !== 'Ok' || !datos.sources || datos.sources.length !== puntos.length) throw new Error(datos.code || 'sin respuesta');
+      datos.sources.forEach((w, i) => { [puntos[i].lng, puntos[i].lat] = w.location; });
+      return true;
+    } catch (err) {
+      console.warn('No se pudieron ubicar los contenedores sobre la calle:', err);
+      return false;
+    } finally {
+      clearTimeout(corte);
+    }
+  })();
+  return promesaAjusteCalles;
+}
+
 async function pedirTrip(paradas) {
   const puntos = [DEPOSITO, ...paradas];
   const coords = puntos.map(p => `${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';');
+  await turnoOSRM();
   const ctrl = new AbortController();
   const corte = setTimeout(() => ctrl.abort(), 12000);
   try {
@@ -553,6 +607,7 @@ async function pedirRutaCalles() {
   if (!pendientes.length) return;
   estadoRutaCalles = 'cargando';
   renderRutaMapa();
+  await ajustarACalles();   // primero se ubican los contenedores sobre la calle
   try {
     rutaCalles = await pedirTrip(pendientes);
     estadoRutaCalles = 'ok';
@@ -563,8 +618,7 @@ async function pedirRutaCalles() {
   renderRutaMapa();
   if (seleccionado && document.querySelector('aside').classList.contains('viendo-detalle')) abrirDetalle(seleccionado);
   if (estadoRutaCalles !== 'ok') return;
-  // segundo pedido (respetando el límite del servidor) para comparar con pasar por todos
-  await new Promise(r => setTimeout(r, 1200));
+  // segundo pedido (turnoOSRM respeta el límite del servidor) para comparar con pasar por todos
   try { rutaCallesTodos = await pedirTrip(contenedores); } catch (err) { rutaCallesTodos = null; }
   renderRutaMapa();
 }
@@ -805,6 +859,12 @@ function cambiarModo(modo) {
     mapaReal.invalidateSize();
     const b = L.latLngBounds([...contenedores, DEPOSITO].map(p => [p.lat, p.lng]));
     mapaReal.fitBounds(b, { padding: [40, 40] });
+    ajustarACalles().then(ok => {
+      if (!ok) return;
+      contenedores.forEach(c => marcadoresReales[c.id]?.setLatLng([c.lat, c.lng]));
+      marcadorDeposito.setLatLng([DEPOSITO.lat, DEPOSITO.lng]);
+      if (!rutaCalles) renderRutaMapa();   // el trazado aproximado usa las posiciones nuevas
+    });
   }
 }
 
