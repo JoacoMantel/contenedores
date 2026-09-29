@@ -138,6 +138,9 @@
   .det-cabecera { padding: 14px 18px 4px; }
   .det-cabecera h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
   .det-cabecera .dir { font-size: 0.8rem; color: var(--ink-soft); margin-top: 2px; }
+  .etiqueta-vivo { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 8px; font-size: 0.66rem; font-weight: 600;
+    vertical-align: 1px; color: #fff; background: var(--accent); text-transform: uppercase; letter-spacing: 0.03em; }
+  .etiqueta-vivo.sin-conexion { background: var(--ink-soft); }
   .chip { display: inline-block; margin-top: 8px; padding: 3px 9px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; color: #fff; }
   .det-tacho { display: flex; align-items: center; gap: 6px; padding: 6px 18px 2px; }
   .det-tacho svg { width: 150px; height: auto; flex-shrink: 0; }
@@ -262,7 +265,7 @@
 <header>
   <div>
     <h1>Contenedores de la zona piloto</h1>
-    <div class="subtitulo">Monitoreo de nivel de llenado (datos de ejemplo)</div>
+    <div class="subtitulo" id="subtitulo">Monitoreo de nivel de llenado (datos de ejemplo)</div>
   </div>
   <div class="derecha">
     <div class="resumen">
@@ -357,7 +360,7 @@
 
     <div class="bloque">
       <h3>Promedio de llenado en las últimas 24 horas</h3>
-      <p class="nota">Serie simulada para la demo; con ThingSpeak se reemplaza por el historial real.</p>
+      <p class="nota">Serie simulada para la demo: como mucho uno de los 14 contenedores manda datos reales (desde Wokwi).</p>
       <svg class="grafico" id="graficoLinea"></svg>
     </div>
 
@@ -531,6 +534,7 @@ const OSRM = 'https://router.project-osrm.org/trip/v1/driving/';
 let rutaCalles = null;        // recorrido real de las paradas pendientes
 let rutaCallesTodos = null;   // recorrido real pasando por los 14 (para comparar)
 let estadoRutaCalles = 'sin-pedir';   // sin-pedir | cargando | ok | error
+let pedidoRuta = 0;          // cada pedido nuevo invalida la respuesta de los anteriores
 
 // Respeta el límite del servidor: deja al menos 1,2 s entre un pedido y otro
 let proximoTurnoOSRM = 0;
@@ -606,18 +610,18 @@ async function pedirRutaCalles() {
   const pendientes = contenedores.filter(c => motivoRecoleccion(c));
   if (!pendientes.length) return;
   estadoRutaCalles = 'cargando';
+  const pedido = ++pedidoRuta;
   renderRutaMapa();
   await ajustarACalles();   // primero se ubican los contenedores sobre la calle
-  try {
-    rutaCalles = await pedirTrip(pendientes);
-    estadoRutaCalles = 'ok';
-  } catch (err) {
-    console.warn('No se pudo calcular el recorrido por las calles:', err);
-    estadoRutaCalles = 'error';
-  }
+  let resultado = null;
+  try { resultado = await pedirTrip(pendientes); }
+  catch (err) { console.warn('No se pudo calcular el recorrido por las calles:', err); }
+  if (pedido !== pedidoRuta) return;   // mientras tanto cambiaron los datos: vale el pedido más nuevo
+  rutaCalles = resultado;
+  estadoRutaCalles = resultado ? 'ok' : 'error';
   renderRutaMapa();
   if (seleccionado && document.querySelector('aside').classList.contains('viendo-detalle')) abrirDetalle(seleccionado);
-  if (estadoRutaCalles !== 'ok') return;
+  if (estadoRutaCalles !== 'ok' || rutaCallesTodos) return;
   // segundo pedido (turnoOSRM respeta el límite del servidor) para comparar con pasar por todos
   try { rutaCallesTodos = await pedirTrip(contenedores); } catch (err) { rutaCallesTodos = null; }
   renderRutaMapa();
@@ -888,7 +892,7 @@ function renderLista() {
     fila.innerHTML = `
       <span class="punto" style="background:${colorSegunLlenado(c.llenado)};"></span>
       <div class="info">
-        <div class="nombre">${c.nombre}</div>
+        <div class="nombre">${c.nombre} ${etiquetaVivo(c)}</div>
         <div class="direccion">${c.direccion}</div>
         <div class="barra"><i style="width:${c.llenado}%;background:${colorSegunLlenado(c.llenado)};"></i></div>
       </div>
@@ -924,19 +928,22 @@ function seleccionar(id) {
 /*
   DETALLE POR CONTENEDOR
   ----------------------
-  "Última lectura" y el historial de 24 h son simulados para la demo.
-  Con ThingSpeak se reemplazan por los datos reales del canal de cada
-  contenedor (feeds.json?results=96 devuelve las últimas 24 h si se
-  envía un dato cada 15 minutos).
+  "Última lectura" y el historial de 24 h son simulados para la demo,
+  salvo en el contenedor conectado a ThingSpeak (ver más abajo), que
+  muestra los datos reales que manda el simulador Wokwi.
 */
 const ALTURA_CONTENEDOR_CM = 40;   // la misma que usa el código del ESP32
 function numeroDe(c) { return parseInt(c.id.slice(1), 10); }
-function minutosUltimaLectura(c) { return (numeroDe(c) * 7) % 14 + 1; }
+function minutosUltimaLectura(c) {
+  if (c.vivo?.estado === 'ok') return Math.max(0, Math.round((Date.now() - c.vivo.ultimaLectura) / 60000));
+  return (numeroDe(c) * 7) % 14 + 1;
+}
 function distanciaSensorCm(c) { return (1 - c.llenado / 100) * ALTURA_CONTENEDOR_CM; }
 
 // Historial simulado: hacia atrás el nivel baja según su ritmo; cuando llega a 0
 // es el momento en que se vació, y antes de eso estaba casi lleno.
 function historialContenedor(c) {
+  if (c.vivo?.estado === 'ok') return { puntos: c.vivo.puntos, vaciados: c.vivo.vaciados };
   const puntos = [], vaciados = [];
   let v = c.llenado;
   for (let h = 0; h <= 24; h++) {
@@ -945,6 +952,130 @@ function historialContenedor(c) {
     if (v < 0) { vaciados.push(-(h + 1) + (-v / c.ritmo)); v = 84 + (numeroDe(c) * 3) % 10; }
   }
   return { puntos, vaciados };
+}
+
+/*
+  DATOS EN VIVO DESDE WOKWI (vía ThingSpeak, gratis y sin clave)
+  --------------------------------------------------------------
+  El ESP32 simulado en Wokwi manda cada 15 min el llenado (%) en field1 y
+  la batería (%) en field2 a un canal público de ThingSpeak. El panel lee
+  las últimas 96 lecturas (24 h) y se las asigna a UN contenedor del mapa.
+  Los otros 13 siguen siendo de ejemplo, y la interfaz marca cuál es cuál.
+  Del canal se obtiene:
+    - llenado y batería: la última lectura;
+    - historial de 24 h y último vaciado: las 96 lecturas (un vaciado es
+      una caída de más de 20 puntos entre dos lecturas seguidas);
+    - ritmo de llenado: cuánto subió por hora desde el último vaciado
+      (hace falta al menos 1 h de datos; si no, queda el de ejemplo).
+  Si ThingSpeak no responde, el contenedor vuelve a sus valores de ejemplo
+  y se avisa: el panel nunca queda en blanco.
+  Para probar un canal sin tocar el código: agregar ?canal=NÚMERO al final
+  de la dirección de la página.
+*/
+const THINGSPEAK = {
+  canal: null,          // número del canal público (null = sin datos en vivo)
+  contenedor: 'c01',    // qué contenedor del panel muestra los datos del simulador
+  consultarCadaMin: 1   // cada cuántos minutos se vuelve a leer el canal
+};
+const canalEnDireccion = new URLSearchParams(location.search).get('canal');
+if (/^\d+$/.test(canalEnDireccion || '')) THINGSPEAK.canal = canalEnDireccion;
+const LECTURA_VIEJA_MIN = 45;   // se esperan lecturas cada 15 min: sin datos en 45 min, se avisa
+const SALTO_VACIADO = 20;       // caída de llenado entre dos lecturas que se toma como vaciado
+
+const contenedorVivo = THINGSPEAK.canal ? contenedores.find(c => c.id === THINGSPEAK.contenedor) : null;
+if (contenedorVivo) {
+  const { llenado, ritmo, bateria } = contenedorVivo;
+  contenedorVivo.vivo = { estado: 'cargando', ejemplo: { llenado, ritmo, bateria } };
+}
+
+function ritmoMedido(lecturas) {
+  let desde = 0;
+  lecturas.forEach((l, i) => { if (i && l.llenado < lecturas[i - 1].llenado - SALTO_VACIADO) desde = i; });
+  const a = lecturas[desde], b = lecturas[lecturas.length - 1];
+  const horas = (b.t - a.t) / 3600000;
+  if (horas < 1 || b.llenado <= a.llenado) return null;
+  return (b.llenado - a.llenado) / horas;
+}
+
+async function leerThingSpeak() {
+  const c = contenedorVivo, v = c.vivo;
+  const enRutaAntes = !!motivoRecoleccion(c);
+  const ctrl = new AbortController();
+  const corte = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const resp = await fetch(`https://api.thingspeak.com/channels/${THINGSPEAK.canal}/feeds.json?results=96`, { signal: ctrl.signal });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const datos = await resp.json();
+    const lecturas = (datos.feeds || [])
+      .map(f => ({ t: Date.parse(f.created_at), llenado: parseFloat(f.field1), bateria: parseFloat(f.field2) }))
+      .filter(l => !isNaN(l.t) && !isNaN(l.llenado))
+      .sort((a, b) => a.t - b.t);
+    if (!lecturas.length) throw new Error('el canal no tiene lecturas de llenado');
+
+    const limitar = x => Math.min(100, Math.max(0, Math.round(x)));
+    const ahora = Date.now();
+    c.llenado = limitar(lecturas[lecturas.length - 1].llenado);
+    const conBateria = lecturas.filter(l => !isNaN(l.bateria));
+    v.bateriaEjemplo = !conBateria.length;
+    c.bateria = conBateria.length ? limitar(conBateria[conBateria.length - 1].bateria) : v.ejemplo.bateria;
+    const ritmo = ritmoMedido(lecturas);
+    v.ritmoEjemplo = ritmo === null;
+    c.ritmo = ritmo === null ? v.ejemplo.ritmo : ritmo;
+
+    v.puntos = lecturas.map(l => ({ h: (l.t - ahora) / 3600000, v: limitar(l.llenado) })).filter(p => p.h >= -24);
+    v.vaciados = [];   // del más reciente al más viejo, como en el historial simulado
+    v.puntos.forEach((p, i) => { if (i && p.v < v.puntos[i - 1].v - SALTO_VACIADO) v.vaciados.unshift((p.h + v.puntos[i - 1].h) / 2); });
+    v.ultimaLectura = lecturas[lecturas.length - 1].t;
+    v.estado = 'ok';
+  } catch (err) {
+    console.warn('No se pudieron leer los datos de ThingSpeak:', err);
+    Object.assign(c, v.ejemplo);
+    v.estado = 'error';
+  } finally {
+    clearTimeout(corte);
+  }
+  refrescarPanel(enRutaAntes !== !!motivoRecoleccion(c));
+}
+
+// Vuelve a dibujar todo lo que depende de los datos de los contenedores
+function refrescarPanel(cambioLaRuta) {
+  const sub = document.getElementById('subtitulo');
+  if (contenedorVivo?.vivo.estado === 'ok') sub.textContent = `Monitoreo de nivel de llenado (datos de ejemplo; ${contenedorVivo.nombre} en vivo desde Wokwi)`;
+  else sub.textContent = 'Monitoreo de nivel de llenado (datos de ejemplo)';
+  if (cambioLaRuta) { rutaCalles = null; estadoRutaCalles = 'sin-pedir'; pedidoRuta++; }
+  actualizarResumen();
+  renderMapa();
+  renderLista();
+  renderRutaMapa();
+  if (seleccionado) {
+    marcarSeleccion(seleccionado);
+    if (document.querySelector('aside').classList.contains('viendo-detalle')) abrirDetalle(seleccionado);
+  }
+  if (document.getElementById('panelStats').classList.contains('abierto')) renderEstadisticas();
+}
+
+// Textos que aclaran de dónde sale cada dato del contenedor conectado
+function etiquetaVivo(c) {
+  if (!c.vivo) return '';
+  if (c.vivo.estado === 'ok') return '<span class="etiqueta-vivo" title="Datos reales del simulador Wokwi, leídos de ThingSpeak">en vivo</span>';
+  if (c.vivo.estado === 'error') return '<span class="etiqueta-vivo sin-conexion" title="No se pudo leer ThingSpeak: se muestran datos de ejemplo">sin conexión</span>';
+  return '';
+}
+function notaHistorial(c) {
+  const v = c.vivo;
+  if (v?.estado === 'ok') return v.puntos.length
+    ? `Nivel de llenado (%). Datos reales del simulador Wokwi, leídos de ThingSpeak (canal ${THINGSPEAK.canal}).`
+    : `No hay lecturas de las últimas 24 horas en ThingSpeak (canal ${THINGSPEAK.canal}).`;
+  if (v?.estado === 'error') return 'No se pudo leer ThingSpeak (servicio no disponible o sin conexión): se muestran los valores y la serie de ejemplo.';
+  if (v?.estado === 'cargando') return 'Leyendo los datos de ThingSpeak… Mientras tanto, serie simulada.';
+  return 'Nivel de llenado (%). Serie simulada para la demo.';
+}
+function textoUltimaLectura(c) {
+  const min = minutosUltimaLectura(c);
+  const texto = min < 60 ? `hace ${min} min` : `hace ${formatoHoras(min / 60)}`;
+  if (c.vivo?.estado === 'ok' && min > LECTURA_VIEJA_MIN)
+    return `<span style="color:var(--high)">${texto}: sin lecturas recientes, revisar el sensor</span>`;
+  return texto;
 }
 
 function dibujoTacho(c) {
@@ -987,10 +1118,12 @@ function graficoHistorial(c) {
     s += `<line x1="${X(h)}" y1="${arriba}" x2="${X(h)}" y2="${H - abajo}" stroke="#2B6E5C" stroke-width="1" stroke-dasharray="1 2"/>`;
     s += `<text x="${X(h)}" y="${arriba + 7}" font-size="8" fill="#2B6E5C" text-anchor="middle">vaciado</text>`;
   });
-  // dibuja la serie cortando en cada vaciado (caída vertical a 0)
+  // dibuja la serie cortando en cada vaciado (caída vertical a 0);
+  // con datos reales se unen las lecturas tal cual, sin inventar puntos
   let d = '', prev = null;
+  const simulada = c.vivo?.estado !== 'ok';
   puntos.forEach(p => {
-    if (prev && p.v < prev.v - 20) { // pasó un vaciado entre prev y p
+    if (simulada && prev && p.v < prev.v - 20) { // pasó un vaciado entre prev y p
       const hv = vaciados.find(x => x > prev.h && x < p.h);
       if (hv !== undefined) d += ` L${X(hv)},${Y(prev.v + c.ritmo * (hv - prev.h))} L${X(hv)},${Y(0)}`;
     }
@@ -1018,7 +1151,7 @@ function abrirDetalle(id) {
     <div class="det-cabecera">
       <h2>${c.nombre}</h2>
       <div class="dir">${c.direccion}</div>
-      <span class="chip" style="background:${colorSegunLlenado(c.llenado)}">${est}</span>
+      <span class="chip" style="background:${colorSegunLlenado(c.llenado)}">${est}</span> ${etiquetaVivo(c)}
     </div>
     <div class="det-tacho">
       ${dibujoTacho(c)}
@@ -1030,14 +1163,14 @@ function abrirDetalle(id) {
     <dl class="det-datos">
       <div><dt>Alerta de llenado</dt><dd>${horasAlerta === 0 ? 'activa' : 'en ' + formatoHoras(horasAlerta)}</dd></div>
       <div><dt>Lleno en</dt><dd>${formatoHoras(horasHastaLleno(c))}</dd></div>
-      <div><dt>Ritmo de llenado</dt><dd>${c.ritmo.toFixed(1).replace('.', ',')} %/h</dd></div>
+      <div><dt>Ritmo de llenado</dt><dd>${c.ritmo.toFixed(1).replace('.', ',')} %/h${c.vivo?.estado === 'ok' ? (c.vivo.ritmoEjemplo ? ' (de ejemplo: faltan datos)' : ' (medido)') : ''}</dd></div>
       <div><dt>Último vaciado</dt><dd>${ultimoVaciado === null ? 'hace más de 24 h' : 'hace ' + formatoHoras(ultimoVaciado)}</dd></div>
-      <div><dt>Batería</dt><dd style="color:${colorBateria(c.bateria)}">${c.bateria}% · ~${diasRestantes(c)} días</dd></div>
-      <div><dt>Última lectura</dt><dd>hace ${minutosUltimaLectura(c)} min</dd></div>
+      <div><dt>Batería</dt><dd style="color:${colorBateria(c.bateria)}">${c.bateria}% · ~${diasRestantes(c)} días${c.vivo?.estado === 'ok' && c.vivo.bateriaEjemplo ? ' (de ejemplo: el canal no manda field2)' : ''}</dd></div>
+      <div><dt>Última lectura</dt><dd>${textoUltimaLectura(c)}</dd></div>
     </dl>
     <div class="det-bloque">
       <h3>Últimas 24 horas</h3>
-      <p class="nota">Nivel de llenado (%). Serie simulada para la demo.</p>
+      <p class="nota">${notaHistorial(c)}</p>
       ${graficoHistorial(c)}
     </div>
     <div class="det-ruta ${parada < 0 ? 'no' : ''}">
@@ -1253,6 +1386,10 @@ if (location.protocol === 'file:') {
   mostrarAviso('Abierto desde el archivo: el mapa real solo carga con la página publicada (por ejemplo en GitHub Pages). Se muestra el esquema.');
 } else {
   cambiarModo('real');
+}
+if (contenedorVivo) {
+  leerThingSpeak();
+  setInterval(leerThingSpeak, THINGSPEAK.consultarCadaMin * 60000);
 }
 </script>
 </body>
