@@ -42,9 +42,11 @@ El sistema tiene dos partes:
   mantenerla.
 
 ## Qué tiene hoy el panel
-- 14 contenedores de ejemplo con `lat`, `lng`, `llenado` (%), `ritmo`
-  (% por hora) y `bateria` (%). Las coordenadas son de ejemplo, en el centro
-  de Buenos Aires.
+- 14 contenedores de ejemplo con `lat`, `lng`, `barrio`, `llenado` (%),
+  `ritmo` (% por hora), `bateria` (%) y `calEjemplo` (calificación de ejemplo
+  [promedio, cantidad]). Están en lugares conocidos de 6 barrios del centro
+  (San Nicolás, Monserrat, San Telmo, Balvanera, Retiro, Puerto Madero), 2 o 3
+  por barrio. El Contenedor 01 (el de Wokwi) está en San Nicolás.
 - Estados de llenado: bajo (<50%), medio (50–79%) y **alerta (≥80%)**.
 - Lista lateral con filtros (Todos, En alerta, Medio, Bajo, Batería baja).
 - **Ficha de detalle** por contenedor: dibujo del contenedor con la distancia
@@ -63,6 +65,12 @@ El sistema tiene dos partes:
   mantenimiento. El municipio los ve en la ficha y los marca como resueltos.
   Limitación de la demo: reportes y calificaciones se guardan solo en el
   navegador (localStorage); hay 2 reportes y calificaciones de ejemplo.
+- **Limpieza por barrio**: botón en el mapa real que pinta cada barrio de
+  rojo (1) a verde (5) según el promedio de estrellas de sus contenedores,
+  menos 0,3 por cada reporte pendiente de "sucio" o "basura afuera". Gris si
+  tiene menos de 5 calificaciones. Sin mapa real, hay una tabla por barrio en
+  Estadísticas. Límites: datos abiertos de la Ciudad (data.buenosaires.gob.ar,
+  "Barrios"), solo los 6 barrios, simplificados y guardados en `BARRIOS`.
 - **Batería**: umbral de batería baja en 20%. Autonomía estimada con una 18650
   (~2400 mAh útiles) y un consumo de ~15 mAh/día (deep sleep + un envío cada
   15 min), o sea ~160 días por carga.

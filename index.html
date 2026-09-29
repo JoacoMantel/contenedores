@@ -117,8 +117,27 @@
     font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
     box-shadow: 0 0 0 3px var(--paper);
   }
+  .botones-mapa { position: absolute; top: 16px; left: 16px; z-index: 30; display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-modo[aria-pressed="true"] { background: var(--ink); color: var(--paper-raised); border-color: var(--ink); }
+  .leyenda-barrios {
+    position: absolute; bottom: 62px; left: 18px; z-index: 5; width: 250px;
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: 4px; padding: 8px 12px; font-size: 0.74rem;
+  }
+  .leyenda-barrios[hidden] { display: none; }
+  /* con la capa de barrios, los marcadores (que usan los mismos colores para el llenado) se atenúan */
+  .con-barrios .icono-leaflet .marcador .punto { opacity: 0.6; }
+  .leyenda-barrios .escala { height: 10px; border-radius: 3px; margin: 5px 0 2px; background: linear-gradient(to right, #B23B3B, #C98A2E, #3F8F6F); }
+  .leyenda-barrios .extremos { display: flex; justify-content: space-between; color: var(--ink-soft); }
+  .leyenda-barrios .nota-ej { color: var(--ink-soft); margin-top: 4px; }
+  .leaflet-tooltip.etq-barrio {
+    background: rgba(247,245,239,0.85); border: none; box-shadow: none; border-radius: 3px;
+    font-size: 0.7rem; font-weight: 700; color: var(--ink); padding: 1px 5px;
+  }
+  .leaflet-tooltip.etq-barrio::before { display: none; }
+  .popup-barrio { font-size: 0.78rem; line-height: 1.45; }
+  .popup-barrio .chip-p { display: inline-block; padding: 1px 7px; border-radius: 9px; color: #fff; font-weight: 700; }
+  .chip-p { display: inline-block; padding: 1px 7px; border-radius: 9px; color: #fff; font-weight: 700; font-family: var(--mono); font-size: 0.74rem; }
   .btn-modo {
-    position: absolute; top: 16px; left: 16px; z-index: 30;
     background: var(--paper-raised); color: var(--ink); border: 1px solid var(--line);
     border-radius: 4px; padding: 8px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
   }
@@ -441,9 +460,18 @@
     <svg id="capaRuta" viewBox="0 0 800 500" preserveAspectRatio="none" aria-hidden="true"></svg>
     <div class="deposito marcador-deposito" id="deposito" title="Depósito municipal (inicio y fin de la ruta)">D</div>
     <button class="btn-ruta" id="btnRuta" aria-pressed="false">Mostrar ruta de recolección</button>
-    <button class="btn-modo" id="btnModo">Ver mapa real</button>
+    <div class="botones-mapa">
+      <button class="btn-modo" id="btnModo">Ver mapa real</button>
+      <button class="btn-modo" id="btnBarrios" aria-pressed="false" title="Pinta cada barrio según las calificaciones de limpieza de los vecinos">Limpieza por barrio</button>
+    </div>
     <div class="aviso-mapa" id="avisoMapa" role="status"><span></span><button id="cerrarAviso" aria-label="Cerrar aviso">×</button></div>
     <div class="panel-ruta" id="panelRuta" aria-live="polite"></div>
+    <div class="leyenda-barrios" id="leyendaBarrios" hidden>
+      <strong>Limpieza por barrio</strong> (estrellas de los vecinos)
+      <div class="escala"></div>
+      <div class="extremos"><span>1 · sucio</span><span>3</span><span>5 · limpio</span></div>
+      <div class="nota-ej">Gris: pocos datos. Hoy casi todas las calificaciones son de ejemplo.</div>
+    </div>
     <div class="leyenda">
       <span><span class="punto" style="background:#3F8F6F;"></span>Bajo (&lt;50%)</span>
       <span><span class="punto" style="background:#C98A2E;"></span>Medio (50–79%)</span>
@@ -496,6 +524,15 @@
     </div>
 
     <div class="bloque">
+      <h3>Limpieza por barrio</h3>
+      <p class="nota">Promedio de las estrellas que ponen los vecinos a los contenedores de cada barrio, menos 0,3 por cada reporte pendiente de suciedad o basura afuera. Calificaciones de ejemplo, salvo las hechas desde la vista vecinos en este navegador.</p>
+      <table>
+        <thead><tr><th>Barrio</th><th class="num">Puntaje</th><th class="num">Calificaciones</th><th class="num">Reportes de limpieza</th><th>Contenedores</th></tr></thead>
+        <tbody id="tablaBarrios"></tbody>
+      </table>
+    </div>
+
+    <div class="bloque">
       <h3>Orden sugerido de recolección</h3>
       <p class="nota">Prioriza los contenedores que se llenan antes, según su ritmo de llenado estimado.</p>
       <table>
@@ -545,9 +582,14 @@
 /*
   DATOS DE CONTENEDORES (de ejemplo)
   ----------------------------------
-  lat / lng: coordenadas del contenedor. Son de ejemplo (zona céntrica de
-             Buenos Aires): para usar las reales, en Google Maps hacé click
-             derecho sobre el punto y copiá los dos números que aparecen.
+  lat / lng: coordenadas del contenedor. Son de ejemplo: lugares conocidos
+             de 6 barrios del centro de Buenos Aires (2 o 3 por barrio).
+             Para usar las reales, en Google Maps hacé click derecho sobre
+             el punto y copiá los dos números que aparecen.
+  barrio: barrio donde está. Se verificó con los límites oficiales
+          (ver BARRIOS más abajo).
+  calEjemplo: calificación de ejemplo de los vecinos [promedio, cantidad],
+              para que el mapa de limpieza por barrio no arranque vacío.
   llenado: porcentaje actual.
   ritmo: cuántos puntos de % sube por hora (estimado). Sirve para
          calcular en cuánto tiempo se llena cada contenedor.
@@ -566,20 +608,20 @@ const CAPACIDAD_UTIL_MAH = 2400;
 const CONSUMO_DIARIO_MAH = 15;
 const UMBRAL_BATERIA_BAJA = 20;
 const contenedores = [
-  { id: "c01", nombre: "Contenedor 01", direccion: "Av. San Martín y Rivadavia", lat: -34.60530, lng: -58.38825, llenado: 22, ritmo: 2.1, bateria: 92 },
-  { id: "c02", nombre: "Contenedor 02", direccion: "Belgrano 450",               lat: -34.60845, lng: -58.38440, llenado: 61, ritmo: 3.4, bateria: 64 },
-  { id: "c03", nombre: "Contenedor 03", direccion: "Plaza central",              lat: -34.60620, lng: -58.37985, llenado: 87, ritmo: 4.8, bateria: 41 },
-  { id: "c04", nombre: "Contenedor 04", direccion: "Rivadavia 120",              lat: -34.60944, lng: -58.37600, llenado: 34, ritmo: 1.9, bateria: 15 },
-  { id: "c05", nombre: "Contenedor 05", direccion: "Terminal de ómnibus",        lat: -34.60440, lng: -58.38195, llenado: 55, ritmo: 5.2, bateria: 78 },
-  { id: "c06", nombre: "Contenedor 06", direccion: "Mitre y Sarmiento",          lat: -34.60584, lng: -58.38562, llenado: 78, ritmo: 3.9, bateria: 55 },
-  { id: "c07", nombre: "Contenedor 07", direccion: "Escuela N° 12",              lat: -34.61034, lng: -58.38737, llenado: 12, ritmo: 1.2, bateria: 88 },
-  { id: "c08", nombre: "Contenedor 08", direccion: "Mercado municipal",          lat: -34.60548, lng: -58.37740, llenado: 93, ritmo: 6.0, bateria: 9 },
-  { id: "c09", nombre: "Contenedor 09", direccion: "Hospital regional",          lat: -34.60710, lng: -58.37390, llenado: 48, ritmo: 2.7, bateria: 70 },
-  { id: "c10", nombre: "Contenedor 10", direccion: "Moreno 890",                 lat: -34.61052, lng: -58.38125, llenado: 67, ritmo: 2.2, bateria: 33 },
-  { id: "c11", nombre: "Contenedor 11", direccion: "Club social",                lat: -34.61160, lng: -58.37845, llenado: 29, ritmo: 1.5, bateria: 97 },
-  { id: "c12", nombre: "Contenedor 12", direccion: "Plaza central, lado norte",  lat: -34.60746, lng: -58.37898, llenado: 82, ritmo: 4.1, bateria: 18 },
-  { id: "c13", nombre: "Contenedor 13", direccion: "Universidad",                lat: -34.60692, lng: -58.38335, llenado: 40, ritmo: 3.0, bateria: 60 },
-  { id: "c14", nombre: "Contenedor 14", direccion: "Estación de tren",           lat: -34.60458, lng: -58.37460, llenado: 71, ritmo: 4.4, bateria: 47 },
+  { id: "c01", nombre: "Contenedor 01", direccion: "Av. San Martín y Rivadavia", barrio: "San Nicolás", lat: -34.60530, lng: -58.38825, llenado: 22, ritmo: 2.1, bateria: 92, calEjemplo: [3.4, 9] },
+  { id: "c02", nombre: "Contenedor 02", direccion: "Av. Corrientes y Florida", barrio: "San Nicolás", lat: -34.60350, lng: -58.37650, llenado: 61, ritmo: 3.4, bateria: 64, calEjemplo: [3.0, 11] },
+  { id: "c03", nombre: "Contenedor 03", direccion: "Plaza Lavalle", barrio: "San Nicolás", lat: -34.60100, lng: -58.38500, llenado: 87, ritmo: 4.8, bateria: 41, calEjemplo: [3.9, 7] },
+  { id: "c04", nombre: "Contenedor 04", direccion: "Plaza de Mayo", barrio: "Monserrat", lat: -34.60830, lng: -58.37220, llenado: 34, ritmo: 1.9, bateria: 15, calEjemplo: [4.2, 12] },
+  { id: "c05", nombre: "Contenedor 05", direccion: "Av. de Mayo y Salta", barrio: "Monserrat", lat: -34.60920, lng: -58.38420, llenado: 55, ritmo: 5.2, bateria: 78, calEjemplo: [3.6, 6] },
+  { id: "c06", nombre: "Contenedor 06", direccion: "Av. Belgrano y Piedras", barrio: "Monserrat", lat: -34.61300, lng: -58.37700, llenado: 78, ritmo: 3.9, bateria: 55, calEjemplo: [4.0, 8] },
+  { id: "c07", nombre: "Contenedor 07", direccion: "Parque Lezama", barrio: "San Telmo", lat: -34.62800, lng: -58.36950, llenado: 12, ritmo: 1.2, bateria: 88, calEjemplo: [4.6, 10] },
+  { id: "c08", nombre: "Contenedor 08", direccion: "Mercado de San Telmo", barrio: "San Telmo", lat: -34.62060, lng: -58.37300, llenado: 93, ritmo: 6.0, bateria: 9, calEjemplo: [4.1, 9] },
+  { id: "c09", nombre: "Contenedor 09", direccion: "Plaza Miserere (Once)", barrio: "Balvanera", lat: -34.60930, lng: -58.40630, llenado: 48, ritmo: 2.7, bateria: 70, calEjemplo: [3.1, 8] },
+  { id: "c10", nombre: "Contenedor 10", direccion: "Av. Corrientes y Av. Pueyrredón", barrio: "Balvanera", lat: -34.60420, lng: -58.40560, llenado: 67, ritmo: 2.2, bateria: 33, calEjemplo: [3.5, 6] },
+  { id: "c11", nombre: "Contenedor 11", direccion: "Plaza San Martín", barrio: "Retiro", lat: -34.59550, lng: -58.37520, llenado: 29, ritmo: 1.5, bateria: 97, calEjemplo: [2.2, 9] },
+  { id: "c12", nombre: "Contenedor 12", direccion: "Estación Retiro", barrio: "Retiro", lat: -34.59120, lng: -58.37400, llenado: 82, ritmo: 4.1, bateria: 18, calEjemplo: [1.8, 11] },
+  { id: "c13", nombre: "Contenedor 13", direccion: "Puente de la Mujer", barrio: "Puerto Madero", lat: -34.60800, lng: -58.36530, llenado: 40, ritmo: 3.0, bateria: 60, calEjemplo: [2.9, 7] },
+  { id: "c14", nombre: "Contenedor 14", direccion: "Dique 4, Alicia Moreau de Justo", barrio: "Puerto Madero", lat: -34.60350, lng: -58.36500, llenado: 71, ritmo: 4.4, bateria: 47, calEjemplo: [2.5, 8] },
 ];
 
 // Depósito municipal: desde donde sale y adonde vuelve el camión.
@@ -647,14 +689,12 @@ function calificar(c, estrellas) {
   calificaciones.push({ contenedor: c.id, estrellas, fecha: Date.now() });
   return guardar(CLAVE_CALIFICACIONES, calificaciones);
 }
-// Promedio de estrellas: calificaciones de ejemplo (fijas, por contenedor) + la de este navegador
+// Promedio de estrellas: calificaciones de ejemplo (calEjemplo) + la de este navegador
 function calificacion(c) {
-  const n = parseInt(c.id.slice(1), 10);
-  const cantEjemplo = 4 + (n * 5) % 9;
-  const promEjemplo = 3 + ((n * 7) % 16) / 10;   // entre 3,0 y 4,5
+  const [promEjemplo, cantEjemplo] = c.calEjemplo || [3, 0];
   const mia = calificaciones.find(x => x.contenedor === c.id);
   const total = cantEjemplo + (mia ? 1 : 0);
-  return { promedio: (promEjemplo * cantEjemplo + (mia ? mia.estrellas : 0)) / total, total, cantEjemplo, mia };
+  return { promedio: total ? (promEjemplo * cantEjemplo + (mia ? mia.estrellas : 0)) / total : 3, total, cantEjemplo, mia };
 }
 function textoEstrellas(prom) {
   const llenas = Math.round(prom);
@@ -671,6 +711,55 @@ function haceCuanto(ms) {
 }
 // Para mostrar texto escrito por vecinos sin que se interprete como HTML
 function esc(t) { return String(t).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]); }
+
+/*
+  LIMPIEZA POR BARRIO
+  -------------------
+  Pinta cada barrio según qué tan limpios encuentran los vecinos sus
+  contenedores, para que el municipio vea dónde reforzar la limpieza o
+  hacer campañas.
+  Cálculo del puntaje de un barrio (de 1 a 5):
+    1. Promedio de TODAS las calificaciones (estrellas) de los contenedores
+       del barrio. Se promedian los números, no los colores.
+    2. Se resta 0,3 por cada reporte pendiente de limpieza ("Está sucio o
+       con mal olor" o "Hay basura afuera"), sin bajar de 1.
+    3. El puntaje se pinta en una escala: 1 rojo, 3 amarillo, 5 verde.
+  Si un barrio tiene menos de 5 calificaciones, se pinta gris ("pocos
+  datos"): un promedio de 1 o 2 opiniones no dice nada.
+  Hoy casi todas las calificaciones son de ejemplo, y la interfaz lo aclara.
+
+  Límites de los barrios: datos abiertos del Gobierno de la Ciudad
+  (data.buenosaires.gob.ar, conjunto "Barrios"). Se guardan solo los 6
+  barrios donde hay contenedores, simplificados (tolerancia ~5 m; el área
+  de cada barrio cambia menos de 0,3%) para que el archivo pese poco.
+  Cada punto es [lat, lng].
+*/
+const BARRIOS = [{"nombre":"Balvanera","comuna":3,"anillos":[[[-34.59964,-58.39294],[-34.60316,-58.39239],[-34.61128,-58.39181],[-34.61552,-58.39166],[-34.61816,-58.3917],[-34.61884,-58.40352],[-34.62065,-58.41255],[-34.61412,-58.41287],[-34.61286,-58.41332],[-34.61074,-58.41447],[-34.60819,-58.41466],[-34.60791,-58.4141],[-34.60725,-58.41391],[-34.60036,-58.4123],[-34.59801,-58.41192],[-34.5981,-58.4103],[-34.59804,-58.40451],[-34.59937,-58.40201],[-34.59977,-58.39873]]]},{"nombre":"Monserrat","comuna":1,"anillos":[[[-34.60691,-58.36773],[-34.61563,-58.36674],[-34.61587,-58.37035],[-34.61603,-58.37172],[-34.61608,-58.37434],[-34.6163,-58.37743],[-34.61746,-58.37736],[-34.61816,-58.3917],[-34.61519,-58.39167],[-34.61167,-58.39179],[-34.6093,-58.39196],[-34.60845,-58.3818],[-34.60794,-58.37352],[-34.60803,-58.37352],[-34.60789,-58.37156],[-34.60779,-58.37109],[-34.6072,-58.37031],[-34.60658,-58.3702],[-34.60651,-58.36944],[-34.60659,-58.36926],[-34.60674,-58.36923],[-34.60697,-58.36815]]]},{"nombre":"Puerto Madero","comuna":1,"anillos":[[[-34.61936,-58.35139],[-34.61962,-58.35192],[-34.61964,-58.35222],[-34.61954,-58.35257],[-34.61978,-58.3527],[-34.61976,-58.35294],[-34.61954,-58.35309],[-34.61941,-58.35352],[-34.61971,-58.35408],[-34.61947,-58.35426],[-34.61955,-58.35515],[-34.61761,-58.35602],[-34.62514,-58.3632],[-34.62513,-58.36346],[-34.62499,-58.36353],[-34.62393,-58.36551],[-34.62399,-58.36579],[-34.60103,-58.3684],[-34.59833,-58.36952],[-34.59844,-58.36812],[-34.5983,-58.36778],[-34.59826,-58.36736],[-34.59833,-58.36661],[-34.59807,-58.36324],[-34.59719,-58.36354],[-34.59713,-58.36345],[-34.59525,-58.35926],[-34.59503,-58.35649],[-34.59513,-58.35594],[-34.59532,-58.35544],[-34.5958,-58.35492],[-34.5967,-58.35344],[-34.59704,-58.35305],[-34.59749,-58.35282],[-34.59794,-58.35239],[-34.59804,-58.35211],[-34.59863,-58.35153],[-34.5993,-58.3505],[-34.60011,-58.34974],[-34.60033,-58.34935],[-34.60084,-58.34878],[-34.60129,-58.348],[-34.60182,-58.34736],[-34.60223,-58.34703],[-34.60234,-58.34682],[-34.60272,-58.34675],[-34.60282,-58.34666],[-34.60305,-58.34673],[-34.60344,-58.34659],[-34.60359,-58.34663],[-34.60428,-58.34648],[-34.60477,-58.34632],[-34.605,-58.34608],[-34.60542,-58.34617],[-34.60601,-58.34612],[-34.60671,-58.34588],[-34.60701,-58.34563],[-34.60795,-58.344],[-34.60975,-58.34172],[-34.60987,-58.34147],[-34.61067,-58.34087],[-34.61388,-58.33998],[-34.61505,-58.33985],[-34.6161,-58.33988],[-34.61669,-58.34045],[-34.61694,-58.34085],[-34.61706,-58.34154],[-34.61708,-58.34264],[-34.61739,-58.34349],[-34.61773,-58.34486],[-34.61751,-58.34553],[-34.61755,-58.34619],[-34.61736,-58.34718],[-34.61705,-58.34781],[-34.61693,-58.3483],[-34.61699,-58.34917],[-34.61708,-58.34949],[-34.61751,-58.35017],[-34.61773,-58.35023],[-34.6179,-58.35014],[-34.61821,-58.35023],[-34.61824,-58.35005],[-34.61817,-58.34993],[-34.61822,-58.3498],[-34.61837,-58.34987],[-34.61848,-58.35011],[-34.61857,-58.35012],[-34.61865,-58.34998],[-34.61872,-58.34997],[-34.61878,-58.35025],[-34.61853,-58.35054],[-34.61856,-58.35073],[-34.61894,-58.35038],[-34.61903,-58.35057],[-34.61917,-58.35068],[-34.61923,-58.35122],[-34.61936,-58.35127]]]},{"nombre":"Retiro","comuna":1,"anillos":[[[-34.59503,-58.35649],[-34.59525,-58.35926],[-34.59713,-58.36345],[-34.59719,-58.36354],[-34.59807,-58.36324],[-34.59833,-58.36661],[-34.59826,-58.36736],[-34.5983,-58.36778],[-34.59844,-58.36812],[-34.59833,-58.36952],[-34.5984,-58.37117],[-34.59891,-58.37828],[-34.5993,-58.38687],[-34.59475,-58.38728],[-34.59284,-58.38757],[-34.59165,-58.38795],[-34.59078,-58.38692],[-34.58751,-58.38369],[-34.58697,-58.3845],[-34.58539,-58.38533],[-34.58356,-58.38697],[-34.58249,-58.3884],[-34.58101,-58.39117],[-34.58084,-58.39165],[-34.57821,-58.38987],[-34.57812,-58.38659],[-34.57825,-58.38529],[-34.57819,-58.3841],[-34.57824,-58.38358],[-34.57845,-58.38286],[-34.58017,-58.37984],[-34.57996,-58.37617],[-34.58053,-58.37513],[-34.57911,-58.37398],[-34.57755,-58.37672],[-34.57749,-58.37605],[-34.57773,-58.37603],[-34.57871,-58.37429],[-34.57822,-58.36793],[-34.57971,-58.36532],[-34.58016,-58.36526],[-34.58059,-58.37059],[-34.58079,-58.3706],[-34.58173,-58.36898],[-34.58115,-58.36163],[-34.58297,-58.36142],[-34.58334,-58.36611],[-34.58356,-58.36615],[-34.5845,-58.36495],[-34.58412,-58.35992],[-34.58592,-58.35973],[-34.58625,-58.36365],[-34.58746,-58.36353],[-34.58719,-58.35961],[-34.58808,-58.35946],[-34.58812,-58.35964],[-34.58826,-58.35968],[-34.58834,-58.3598],[-34.58857,-58.36085],[-34.58894,-58.36075],[-34.58857,-58.36089],[-34.59001,-58.368],[-34.59043,-58.36791],[-34.59066,-58.36749],[-34.59072,-58.36689],[-34.59098,-58.36652],[-34.59427,-58.36437],[-34.59439,-58.36444],[-34.59449,-58.36464],[-34.59446,-58.36483],[-34.59283,-58.3659],[-34.59286,-58.36616],[-34.5914,-58.36709],[-34.5914,-58.36724],[-34.59155,-58.36728],[-34.59299,-58.36639],[-34.5932,-58.36693],[-34.59198,-58.36766],[-34.59196,-58.36787],[-34.59209,-58.36793],[-34.59331,-58.36715],[-34.59416,-58.36908],[-34.59748,-58.36791],[-34.59742,-58.3665],[-34.59823,-58.36638],[-34.59821,-58.36609],[-34.59739,-58.36616],[-34.5972,-58.36384],[-34.59551,-58.36441],[-34.59538,-58.36435],[-34.59532,-58.36411],[-34.59542,-58.36387],[-34.59523,-58.36303],[-34.59513,-58.36148],[-34.59528,-58.36125],[-34.59517,-58.36151],[-34.59529,-58.36304],[-34.59549,-58.36385],[-34.59666,-58.36342],[-34.59651,-58.36249],[-34.59552,-58.36039],[-34.59544,-58.36032],[-34.59508,-58.36038],[-34.59511,-58.3611],[-34.59467,-58.35415],[-34.5952,-58.35095],[-34.59471,-58.35412],[-34.59486,-58.35669],[-34.59494,-58.35685]]]},{"nombre":"San Nicolás","comuna":1,"anillos":[[[-34.60691,-58.36773],[-34.60697,-58.36815],[-34.60674,-58.36923],[-34.60659,-58.36926],[-34.60651,-58.36944],[-34.60658,-58.3702],[-34.6072,-58.37031],[-34.60779,-58.37109],[-34.60789,-58.37156],[-34.60803,-58.37352],[-34.60794,-58.37352],[-34.60845,-58.3818],[-34.6093,-58.39196],[-34.60316,-58.39239],[-34.59964,-58.39294],[-34.59891,-58.37828],[-34.59833,-58.36952],[-34.60103,-58.3684]]]},{"nombre":"San Telmo","comuna":1,"anillos":[[[-34.62513,-58.36346],[-34.6252,-58.36798],[-34.62715,-58.36795],[-34.62719,-58.3681],[-34.62833,-58.36945],[-34.6295,-58.37066],[-34.62665,-58.37097],[-34.6268,-58.37457],[-34.62731,-58.37558],[-34.62637,-58.37618],[-34.62512,-58.37676],[-34.6236,-58.37707],[-34.6219,-58.37722],[-34.6163,-58.37743],[-34.61608,-58.37434],[-34.61603,-58.37172],[-34.61587,-58.37035],[-34.61563,-58.36674],[-34.62399,-58.36579],[-34.62393,-58.36551],[-34.62499,-58.36353]]]}];
+const MIN_CALIFICACIONES_BARRIO = 5;
+
+function puntajeBarrio(nombre) {
+  const cs = contenedores.filter(c => c.barrio === nombre);
+  let suma = 0, cant = 0, mias = 0;
+  cs.forEach(c => { const cal = calificacion(c); suma += cal.promedio * cal.total; cant += cal.total; if (cal.mia) mias++; });
+  const limpieza = cs.flatMap(reportesActivos).filter(r => r.tipo === 'sucio' || r.tipo === 'afuera').length;
+  const promedio = cant ? suma / cant : null;
+  const puntaje = promedio === null ? null : Math.max(1, promedio - 0.3 * limpieza);
+  return { nombre, contenedores: cs, cant, mias, promedio, limpieza, puntaje, pocosDatos: cant < MIN_CALIFICACIONES_BARRIO };
+}
+// Escala de color: 1 rojo → 3 amarillo → 5 verde (colores de la paleta del panel)
+function mezclar(hexA, hexB, t) {
+  const a = hexA.match(/\w\w/g).map(h => parseInt(h, 16)), b = hexB.match(/\w\w/g).map(h => parseInt(h, 16));
+  return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+function colorPuntaje(p) {
+  if (p === null) return '#9AA3A0';
+  const x = Math.min(5, Math.max(1, p));
+  return x <= 3 ? mezclar(COLOR.alerta, COLOR.medio, (x - 1) / 2) : mezclar(COLOR.medio, COLOR.bajo, (x - 3) / 2);
+}
+function textoPuntaje(b) {
+  if (b.pocosDatos) return 'pocos datos';
+  return b.puntaje.toFixed(1).replace('.', ',') + ' de 5';
+}
 
 /*
   Para el mapa esquemático (el que se usa sin internet) se convierten
@@ -1118,6 +1207,7 @@ function cambiarModo(modo) {
   renderMapa();
   renderLista();
   renderRutaMapa();
+  renderBarrios();
   if (seleccionado) marcarSeleccion(seleccionado);
   if (modo === 'real') {
     mapaReal.invalidateSize();
@@ -1138,6 +1228,49 @@ function volverAlEsquema(motivo) {
   mostrarAviso(motivo);
 }
 
+// Capa "Limpieza por barrio" en el mapa real (en el esquema no hay límites: se usa la tabla de Estadísticas)
+let mostrandoBarrios = false, capaBarrios = null;
+function popupBarrio(pb, b) {
+  return `<div class="popup-barrio">
+    <strong>${b.nombre}</strong> (Comuna ${b.comuna})<br>
+    Limpieza: <span class="chip-p" style="background:${colorPuntaje(pb.pocosDatos ? null : pb.puntaje)}">${textoPuntaje(pb)}</span><br>
+    ${pb.cant} calificaciones (${pb.cant - pb.mias} de ejemplo${pb.mias ? `, ${pb.mias} de este navegador` : ''})<br>
+    Reportes de limpieza pendientes: ${pb.limpieza}${pb.limpieza ? ' (restan 0,3 cada uno)' : ''}<br>
+    Contenedores: ${pb.contenedores.map(c => c.nombre).join(', ')}
+  </div>`;
+}
+function renderBarrios() {
+  const visible = mostrandoBarrios && modoMapa === 'real' && !!mapaReal;
+  document.getElementById('btnBarrios').setAttribute('aria-pressed', mostrandoBarrios);
+  document.getElementById('leyendaBarrios').hidden = !visible;
+  document.getElementById('zona-mapa').classList.toggle('con-barrios', visible);
+  if (!mapaReal) return;
+  if (!capaBarrios) {
+    mapaReal.createPane('barrios').style.zIndex = 350;   // debajo de la ruta y de los marcadores
+    capaBarrios = L.layerGroup();
+  }
+  capaBarrios.clearLayers();
+  if (!visible) { capaBarrios.remove(); return; }
+  capaBarrios.addTo(mapaReal);
+  BARRIOS.forEach(b => {
+    const pb = puntajeBarrio(b.nombre);
+    const col = colorPuntaje(pb.pocosDatos ? null : pb.puntaje);
+    L.polygon(b.anillos, { pane: 'barrios', color: col, weight: 2, fillColor: col, fillOpacity: 0.3 })
+      .bindTooltip(`${b.nombre} · ${textoPuntaje(pb)}`, { permanent: true, direction: 'center', className: 'etq-barrio', pane: 'barrios' })
+      .bindPopup(popupBarrio(pb, b))
+      .addTo(capaBarrios);
+  });
+}
+document.getElementById('btnBarrios').addEventListener('click', () => {
+  if (modoMapa !== 'real') {
+    mostrarAviso('La limpieza por barrio se dibuja sobre el mapa real. Sin mapa, está la tabla por barrio en "Ver estadísticas".');
+    return;
+  }
+  mostrandoBarrios = !mostrandoBarrios;
+  renderBarrios();
+  if (mostrandoBarrios) mapaReal.fitBounds(L.latLngBounds(BARRIOS.flatMap(b => b.anillos.flat())), { padding: [20, 20] });
+});
+
 function renderLista() {
   const lista = document.getElementById('lista');
   lista.innerHTML = '';
@@ -1154,7 +1287,7 @@ function renderLista() {
       <span class="punto" style="background:${colorSegunLlenado(c.llenado)};"></span>
       <div class="info">
         <div class="nombre">${c.nombre} ${etiquetaVivo(c)}</div>
-        <div class="direccion">${c.direccion}</div>
+        <div class="direccion">${c.direccion} · ${c.barrio}</div>
         ${reportesActivos(c).length ? `<div class="rep-linea">${lineaReportes(c)}</div>` : ''}
         <div class="barra"><i style="width:${c.llenado}%;background:${colorSegunLlenado(c.llenado)};"></i></div>
       </div>
@@ -1317,6 +1450,7 @@ function refrescarPanel() {
     if (document.querySelector('aside').classList.contains('viendo-detalle')) abrirDetalle(seleccionado);
   }
   if (document.getElementById('panelStats').classList.contains('abierto')) renderEstadisticas();
+  renderBarrios();
   actualizarApp();
 }
 
@@ -1416,7 +1550,7 @@ function abrirDetalle(id) {
     <button class="det-volver" id="volverLista">‹ Volver a la lista</button>
     <div class="det-cabecera">
       <h2>${c.nombre}</h2>
-      <div class="dir">${c.direccion}</div>
+      <div class="dir">${c.direccion} · ${c.barrio}</div>
       <span class="chip" style="background:${colorSegunLlenado(c.llenado)}">${est}</span> ${etiquetaVivo(c)}
     </div>
     <div class="det-tacho">
@@ -1649,7 +1783,19 @@ function renderBaterias() {
 }
 
 function renderEstadisticas() {
-  renderKPIs(); renderDistribucion(); renderBarras(); renderLinea(); renderBaterias(); renderRuta();
+  renderKPIs(); renderDistribucion(); renderBarras(); renderLinea(); renderBaterias(); renderRuta(); renderTablaBarrios();
+}
+// Tabla de limpieza por barrio (funciona también sin mapa real), de peor a mejor
+function renderTablaBarrios() {
+  const filas = BARRIOS.map(b => puntajeBarrio(b.nombre))
+    .sort((a, b) => (a.pocosDatos ? 99 : a.puntaje) - (b.pocosDatos ? 99 : b.puntaje));
+  document.getElementById('tablaBarrios').innerHTML = filas.map(pb => `<tr>
+      <td>${pb.nombre}</td>
+      <td class="num"><span class="chip-p" style="background:${colorPuntaje(pb.pocosDatos ? null : pb.puntaje)}">${textoPuntaje(pb)}</span></td>
+      <td class="num">${pb.cant}</td>
+      <td class="num">${pb.limpieza}</td>
+      <td>${pb.contenedores.map(c => c.nombre.replace('Contenedor ', 'C')).join(', ')}</td>
+    </tr>`).join('');
 }
 
 /* ---------- Abrir / cerrar el panel ---------- */
@@ -1781,12 +1927,12 @@ function encuadrarApp() {
 function fijarPosicion(lat, lng, origen) {
   vPos = { lat, lng, origen };
   const zona = metrosLineaRecta(vPos, DEPOSITO);
-  if (zona > 3000) avisoApp(`Estás a ${formatoDistancia(zona)} de la zona piloto, así que las distancias no te van a servir. Para probar, tocá "Elegir en el mapa" y marcá un punto de la zona.`);
+  if (zona > 4000) avisoApp(`Estás a ${formatoDistancia(zona)} de la zona piloto, así que las distancias no te van a servir. Para probar, tocá "Elegir en el mapa" y marcá un punto de la zona.`);
   else avisoApp(origen === 'elegida' ? 'Ubicación elegida en el mapa. Las distancias son en línea recta.' : '');
   if (vMapa) {
     if (!vMarcadorYo) vMarcadorYo = L.marker([lat, lng], { icon: L.divIcon({ className: 'icono-leaflet', iconSize: [18, 18], iconAnchor: [9, 9], html: '<div class="v-yo" title="Vos estás acá"></div>' }), interactive: false, zIndexOffset: 1000 }).addTo(vMapa);
     else vMarcadorYo.setLatLng([lat, lng]);
-    if (zona <= 3000) {
+    if (zona <= 4000) {
       const cerca = ordenadosPorDistancia().slice(0, 3).map(x => [x.c.lat, x.c.lng]);
       vMapa.fitBounds(L.latLngBounds([[lat, lng], ...cerca]), { padding: [50, 50], maxZoom: 17 });
     }
@@ -1830,7 +1976,7 @@ function renderCerca() {
     return `<button class="tarjeta ${vPos && cercano && cercano.c === c ? 'destacada' : ''}" data-abrir="${c.id}">
       <div class="t-info">
         <div class="t-nombre">${c.nombre}</div>
-        <div class="t-dir">${c.direccion}</div>
+        <div class="t-dir">${c.direccion} · ${c.barrio}</div>
         <span class="estado-vecino" style="background:${est.color}">${est.texto}</span>
         ${reportesActivos(c).length ? '<span class="t-dir" style="color:#8A5A12"> · con avisos de vecinos</span>' : ''}
       </div>
@@ -1912,7 +2058,7 @@ function renderHoja() {
     <div class="hoja-asa"></div>
     <button class="hoja-cerrar" id="vCerrarHoja" aria-label="Cerrar">×</button>
     <h3>${c.nombre}</h3>
-    <div class="h-dir">${c.direccion}${dist !== null ? ` · a ${formatoDistancia(dist)}` : ''}</div>
+    <div class="h-dir">${c.direccion} · ${c.barrio}${dist !== null ? ` · a ${formatoDistancia(dist)}` : ''}</div>
     <span class="estado-vecino" style="background:${est.color}">${est.texto}</span>
     <div class="h-barra"><i style="width:${c.llenado}%;background:${est.color}"></i></div>
     <div class="h-fila">${c.llenado}% lleno · ${origenDato(c)}</div>
