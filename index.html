@@ -177,6 +177,9 @@
   .pr-cifras div { color: var(--ink-soft); font-size: 0.74rem; }
   .pr-cifras b { display: block; font-family: var(--mono); font-size: 1rem; color: var(--ink); }
   .pr-ahorro { margin-top: 8px; font-size: 0.74rem; color: var(--low); }
+  .pr-estado { margin-top: 8px; font-size: 0.74rem; color: var(--ink-soft); }
+  .pr-estado.error { color: var(--high); }
+  .pr-estado button { margin-left: 4px; background: none; border: 1px solid currentColor; color: inherit; border-radius: 3px; font-size: 0.72rem; padding: 1px 6px; cursor: pointer; }
   .pr-lista { list-style: none; margin: 0; padding: 4px 0; }
   .pr-lista li { display: flex; gap: 10px; padding: 7px 14px; align-items: baseline; cursor: pointer; }
   .pr-lista li:hover { background: var(--paper); }
@@ -502,6 +505,81 @@ function calcularRuta(pendientes) {
 }
 function formatoKm(m) { return (m / 1000).toFixed(1).replace('.', ',') + " km"; }
 
+/*
+  RECORRIDO POR LAS CALLES (gratis, sin clave)
+  --------------------------------------------
+  Se usa OSRM (Open Source Routing Machine), un motor de ruteo libre que
+  trabaja sobre las calles de OpenStreetMap y respeta el sentido de
+  circulación. Su servicio "trip" además reordena las paradas para que
+  el recorrido total sea lo más corto posible, saliendo y volviendo al
+  depósito.
+  Se usa el servidor de demostración público (router.project-osrm.org):
+  es gratuito pero pensado para pruebas, con un límite de ~1 pedido por
+  segundo. Para un piloto real habría que instalar un servidor propio.
+  Si el servicio no responde, se muestra el trazado aproximado en L.
+*/
+const OSRM = 'https://router.project-osrm.org/trip/v1/driving/';
+let rutaCalles = null;        // recorrido real de las paradas pendientes
+let rutaCallesTodos = null;   // recorrido real pasando por los 14 (para comparar)
+let estadoRutaCalles = 'sin-pedir';   // sin-pedir | cargando | ok | error
+
+async function pedirTrip(paradas) {
+  const puntos = [DEPOSITO, ...paradas];
+  const coords = puntos.map(p => `${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';');
+  const ctrl = new AbortController();
+  const corte = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const resp = await fetch(`${OSRM}${coords}?source=first&roundtrip=true&overview=full&geometries=geojson`, { signal: ctrl.signal });
+    const datos = await resp.json();
+    if (datos.code !== 'Ok' || !datos.trips || !datos.trips.length) throw new Error(datos.code || 'sin respuesta');
+    // waypoint_index indica en qué posición del recorrido quedó cada punto
+    const orden = [];
+    datos.waypoints.forEach((w, i) => { if (i > 0) orden[w.waypoint_index - 1] = puntos[i]; });
+    const viaje = datos.trips[0];
+    return {
+      orden: orden.filter(Boolean),
+      metros: viaje.distance,
+      segundos: viaje.duration,
+      linea: viaje.geometry.coordinates.map(([lng, lat]) => [lat, lng])
+    };
+  } finally {
+    clearTimeout(corte);
+  }
+}
+
+async function pedirRutaCalles() {
+  if (estadoRutaCalles === 'cargando' || estadoRutaCalles === 'ok') return;
+  const pendientes = contenedores.filter(c => motivoRecoleccion(c));
+  if (!pendientes.length) return;
+  estadoRutaCalles = 'cargando';
+  renderRutaMapa();
+  try {
+    rutaCalles = await pedirTrip(pendientes);
+    estadoRutaCalles = 'ok';
+  } catch (err) {
+    console.warn('No se pudo calcular el recorrido por las calles:', err);
+    estadoRutaCalles = 'error';
+  }
+  renderRutaMapa();
+  if (seleccionado && document.querySelector('aside').classList.contains('viendo-detalle')) abrirDetalle(seleccionado);
+  if (estadoRutaCalles !== 'ok') return;
+  // segundo pedido (respetando el límite del servidor) para comparar con pasar por todos
+  await new Promise(r => setTimeout(r, 1200));
+  try { rutaCallesTodos = await pedirTrip(contenedores); } catch (err) { rutaCallesTodos = null; }
+  renderRutaMapa();
+}
+
+function formatoMinutos(seg) {
+  const min = Math.round(seg / 60);
+  return min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')} min`;
+}
+
+// La ruta que usan el mapa, el panel y la ficha de detalle
+function rutaVigente() {
+  if (rutaCalles) return rutaCalles;
+  return calcularRuta(contenedores.filter(c => motivoRecoleccion(c)));
+}
+
 function renderRutaMapa() {
   const zona = document.getElementById('zona-mapa');
   zona.classList.toggle('mostrar-ruta', mostrandoRuta);
@@ -516,9 +594,7 @@ function renderRutaMapa() {
     if (mostrandoRuta) marcadorDeposito.addTo(mapaReal); else marcadorDeposito.remove();
   }
 
-  const pendientes = contenedores.filter(c => motivoRecoleccion(c));
-  const ruta = calcularRuta(pendientes);
-  const todos = calcularRuta(contenedores);
+  const ruta = rutaVigente();
 
   // números sobre los marcadores
   contenedores.forEach(c => {
@@ -531,18 +607,25 @@ function renderRutaMapa() {
     badge.textContent = pos >= 0 ? pos + 1 : '';
   });
 
-  // trazado en el mapa real (tramos en L, aproximados)
+  // trazado en el mapa real
   if (mapaReal) {
     capaRutaReal.clearLayers();
     if (modoMapa === 'real' && mostrandoRuta) {
-      const pts = [DEPOSITO, ...ruta.orden, DEPOSITO];
-      const linea = [[pts[0].lat, pts[0].lng]];
-      for (let i = 1; i < pts.length; i++) {
-        linea.push([pts[i - 1].lat, pts[i].lng]);
-        linea.push([pts[i].lat, pts[i].lng]);
+      let linea, punteada = false;
+      if (rutaCalles) {
+        linea = rutaCalles.linea;                       // por las calles
+      } else {
+        const pts = [DEPOSITO, ...ruta.orden, DEPOSITO];  // aproximado, en L
+        linea = [[pts[0].lat, pts[0].lng]];
+        for (let i = 1; i < pts.length; i++) {
+          linea.push([pts[i - 1].lat, pts[i].lng]);
+          linea.push([pts[i].lat, pts[i].lng]);
+        }
+        punteada = true;
       }
       L.polyline(linea, { color: '#F7F5EF', weight: 8, opacity: 0.9, lineJoin: 'round', interactive: false }).addTo(capaRutaReal);
-      L.polyline(linea, { color: '#2B6E5C', weight: 4, lineJoin: 'round', interactive: false }).addTo(capaRutaReal);
+      L.polyline(linea, { color: '#2B6E5C', weight: 4, lineJoin: 'round', interactive: false,
+        dashArray: punteada ? '8 8' : null, opacity: punteada ? 0.7 : 1 }).addTo(capaRutaReal);
     }
   }
 
@@ -557,7 +640,21 @@ function renderRutaMapa() {
     </g>`;
 
   // panel con el detalle
-  const ahorro = Math.round((1 - ruta.metros / todos.metros) * 100);
+  let comparacion = '', estado = '', criterio = '';
+  if (rutaCalles) {
+    if (rutaCallesTodos) {
+      const ahorro = Math.round((1 - rutaCalles.metros / rutaCallesTodos.metros) * 100);
+      comparacion = `<div class="pr-ahorro">Pasando por los ${contenedores.length} contenedores serían ${formatoKm(rutaCallesTodos.metros)} (${formatoMinutos(rutaCallesTodos.segundos)}): esta ruta recorre ${ahorro}% menos.</div>`;
+    }
+    criterio = `Recorrido calculado por las calles con OSRM sobre OpenStreetMap: respeta el sentido de circulación y ordena las paradas para acortar el trayecto. El tiempo es solo de manejo, sin contar las paradas.`;
+  } else {
+    const todos = calcularRuta(contenedores);
+    const ahorro = Math.round((1 - ruta.metros / todos.metros) * 100);
+    comparacion = `<div class="pr-ahorro">Pasando por los ${contenedores.length} contenedores serían ${formatoKm(todos.metros)}: esta ruta recorre ${ahorro}% menos (estimación).</div>`;
+    if (estadoRutaCalles === 'cargando') estado = `<div class="pr-estado">Calculando el recorrido por las calles…</div>`;
+    if (estadoRutaCalles === 'error') estado = `<div class="pr-estado error">No se pudo calcular el recorrido por las calles (servicio no disponible o sin conexión). Se muestra un trazado aproximado. <button id="reintentarRuta">Reintentar</button></div>`;
+    criterio = `Distancias aproximadas: se miden en tramos rectos (en L) entre puntos, no por el trazado exacto de las calles.`;
+  }
   document.getElementById('panelRuta').innerHTML = ruta.orden.length === 0
     ? `<div class="pr-cabecera"><strong>No hace falta salir</strong>Ningún contenedor está en alerta ni lo va a estar en las próximas ${HORAS_ANTICIPACION} horas.</div>`
     : `<div class="pr-cabecera">
@@ -565,9 +662,11 @@ function renderRutaMapa() {
         Sale del depósito (D), recorre ${ruta.orden.length} contenedores y vuelve.
         <div class="pr-cifras">
           <div><b>${ruta.orden.length}</b>paradas</div>
-          <div><b>${formatoKm(ruta.metros)}</b>recorrido</div>
+          <div><b>${rutaCalles ? '' : '~'}${formatoKm(ruta.metros)}</b>recorrido</div>
+          ${rutaCalles ? `<div><b>${formatoMinutos(rutaCalles.segundos)}</b>de manejo</div>` : ''}
         </div>
-        <div class="pr-ahorro">Pasando por los ${contenedores.length} contenedores serían ${formatoKm(todos.metros)}: esta ruta recorre ${ahorro}% menos.</div>
+        ${comparacion}
+        ${estado}
       </div>
       <ol class="pr-lista">
         ${ruta.orden.map((c, i) => `
@@ -579,13 +678,15 @@ function renderRutaMapa() {
             </span>
           </li>`).join('')}
       </ol>
-      <div class="pr-criterio">Incluye los contenedores en alerta (≥80%) y los que llegan a la alerta en las próximas ${HORAS_ANTICIPACION} horas. Distancias aproximadas: se miden en tramos rectos (en L) entre puntos, no por el trazado exacto de las calles.</div>`;
+      <div class="pr-criterio">Incluye los contenedores en alerta (≥80%) y los que llegan a la alerta en las próximas ${HORAS_ANTICIPACION} horas. ${criterio}</div>`;
   document.querySelectorAll('.pr-lista li').forEach(li => li.addEventListener('click', () => seleccionar(li.dataset.id)));
+  document.getElementById('reintentarRuta')?.addEventListener('click', () => { estadoRutaCalles = 'sin-pedir'; pedirRutaCalles(); });
 }
 
 document.getElementById('btnRuta').addEventListener('click', () => {
   mostrandoRuta = !mostrandoRuta;
   renderRutaMapa();
+  if (mostrandoRuta) pedirRutaCalles();
 });
 
 let filtroActual = "todos";
@@ -848,8 +949,7 @@ function abrirDetalle(id) {
   const { vaciados } = historialContenedor(c);
   const ultimoVaciado = vaciados.length ? -vaciados[0] : null;
   const horasAlerta = c.llenado >= 80 ? 0 : (80 - c.llenado) / c.ritmo;
-  const pendientes = contenedores.filter(x => motivoRecoleccion(x));
-  const ruta = calcularRuta(pendientes);
+  const ruta = rutaVigente();
   const parada = ruta.orden.indexOf(c);
   const est = estadoTexto(c.llenado);
 
