@@ -65,12 +65,13 @@ El sistema tiene dos partes:
   Batería baja por debajo de 20%.
 
 ## Ideas y próximos pasos
-1. **Conectar Wokwi con ThingSpeak**: el ESP32 envía el llenado en `field1`
-   y la batería en `field2`, y uno de los contenedores del panel muestra esos
-   datos en vivo. Lectura pública:
-   `https://api.thingspeak.com/channels/{ID}/feeds.json?results=96`
-   (96 lecturas son 24 h con un envío cada 15 min). Esto reemplazaría el
-   historial simulado de ese contenedor.
+1. ~~Conectar Wokwi con ThingSpeak~~ **(hecho)**: canal público **3486377**.
+   El ESP32 envía el llenado (%) en `field1` y la batería (%) en `field2`,
+   cada 20 s en la simulación y cada 15 min en el equipo real. El
+   Contenedor 01 del panel muestra esos datos en vivo (constante
+   `THINGSPEAK` en `index.html`, o `?canal=N` en la dirección). Lectura:
+   `https://api.thingspeak.com/channels/3486377/feeds.json?minutes=1440&results=8000`.
+   Si ThingSpeak falla, ese contenedor vuelve a sus datos de ejemplo.
 2. **Comparación "antes vs. después"**: línea de base de ruta fija (el camión
    pasa por todos los contenedores) contra la recolección por demanda.
    Indicadores con definición, unidad, fuente y periodicidad: km recorridos,

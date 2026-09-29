@@ -957,13 +957,14 @@ function historialContenedor(c) {
 /*
   DATOS EN VIVO DESDE WOKWI (vía ThingSpeak, gratis y sin clave)
   --------------------------------------------------------------
-  El ESP32 simulado en Wokwi manda cada 15 min el llenado (%) en field1 y
-  la batería (%) en field2 a un canal público de ThingSpeak. El panel lee
-  las últimas 96 lecturas (24 h) y se las asigna a UN contenedor del mapa.
+  El ESP32 simulado en Wokwi manda el llenado (%) en field1 y la batería
+  (%) en field2 a un canal público de ThingSpeak: cada 20 s en la
+  simulación y cada 15 min en el equipo real. El panel lee las lecturas de
+  las últimas 24 h y se las asigna a UN contenedor del mapa.
   Los otros 13 siguen siendo de ejemplo, y la interfaz marca cuál es cuál.
   Del canal se obtiene:
     - llenado y batería: la última lectura;
-    - historial de 24 h y último vaciado: las 96 lecturas (un vaciado es
+    - historial de 24 h y último vaciado: esas lecturas (un vaciado es
       una caída de más de 20 puntos entre dos lecturas seguidas);
     - ritmo de llenado: cuánto subió por hora desde el último vaciado
       (hace falta al menos 1 h de datos; si no, queda el de ejemplo).
@@ -973,7 +974,7 @@ function historialContenedor(c) {
   de la dirección de la página.
 */
 const THINGSPEAK = {
-  canal: null,          // número del canal público (null = sin datos en vivo)
+  canal: '3486377',     // número del canal público (null = sin datos en vivo)
   contenedor: 'c01',    // qué contenedor del panel muestra los datos del simulador
   consultarCadaMin: 1   // cada cuántos minutos se vuelve a leer el canal
 };
@@ -1003,7 +1004,7 @@ async function leerThingSpeak() {
   const ctrl = new AbortController();
   const corte = setTimeout(() => ctrl.abort(), 10000);
   try {
-    const resp = await fetch(`https://api.thingspeak.com/channels/${THINGSPEAK.canal}/feeds.json?results=96`, { signal: ctrl.signal });
+    const resp = await fetch(`https://api.thingspeak.com/channels/${THINGSPEAK.canal}/feeds.json?minutes=1440&results=8000`, { signal: ctrl.signal });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const datos = await resp.json();
     const lecturas = (datos.feeds || [])
