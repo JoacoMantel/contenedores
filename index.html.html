@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contenedores · Panel de gestión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root {
+    --ink: #1E2A28;
+    --ink-soft: #4B5A56;
+    --paper: #EDEBE3;
+    --paper-raised: #F7F5EF;
+    --line: #CFCABC;
+    --accent: #2B6E5C;
+    --low: #3F8F6F;
+    --mid: #C98A2E;
+    --high: #B23B3B;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Public Sans", -apple-system, "Segoe UI", sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  button { font-family: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- Encabezado ---------- */
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 20px;
+    padding: 16px 24px; border-bottom: 1px solid var(--line); flex-shrink: 0; flex-wrap: wrap;
+  }
+  header h1 { font-size: 1.15rem; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  header .subtitulo { font-size: 0.82rem; color: var(--ink-soft); margin-top: 2px; }
+  .derecha { display: flex; align-items: center; gap: 28px; }
+  .resumen { display: flex; gap: 22px; font-size: 0.8rem; color: var(--ink-soft); }
+  .resumen strong { font-family: var(--mono); font-size: 1rem; color: var(--ink); font-weight: 600; display: block; }
+  .btn-stats {
+    background: var(--accent); color: #fff; border: none; border-radius: 4px;
+    padding: 10px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .btn-stats:hover { background: #235A4B; }
+  .btn-stats svg { width: 16px; height: 16px; }
+
+  /* ---------- Cuerpo ---------- */
+  main { display: flex; flex: 1; min-height: 0; }
+  aside { width: 310px; flex-shrink: 0; border-right: 1px solid var(--line); background: var(--paper-raised); display: flex; flex-direction: column; }
+  .filtros { display: flex; gap: 6px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .filtro {
+    border: 1px solid var(--line); background: transparent; color: var(--ink-soft);
+    border-radius: 20px; padding: 5px 11px; font-size: 0.76rem; cursor: pointer;
+  }
+  .filtro.activo { background: var(--ink); color: var(--paper-raised); border-color: var(--ink); }
+  #lista { overflow-y: auto; flex: 1; }
+  .item { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .item:hover { background: var(--paper); }
+  .item.activo { background: var(--paper); border-left: 3px solid var(--accent); padding-left: 15px; }
+  .punto { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+  .item .info { flex: 1; min-width: 0; }
+  .item .nombre { font-size: 0.86rem; font-weight: 500; }
+  .item .direccion { font-size: 0.74rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .barra { height: 3px; background: var(--line); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .item .barra i { display: block; height: 100%; }
+  .item .valor { font-family: var(--mono); font-size: 0.86rem; font-weight: 600; }
+  .derecha-item { text-align: right; }
+  .bat { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-family: var(--mono); font-size: 0.7rem; margin-top: 3px; }
+  .ico-bat { width: 18px; height: 9px; }
+  .aviso-bat {
+    position: absolute; top: -9px; right: -11px; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--paper-raised); border: 1.5px solid var(--high); color: var(--high);
+    font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
+  .alerta-bat { border-left: 3px solid var(--high); background: #F3E3DF; padding: 10px 12px; font-size: 0.8rem; margin-bottom: 12px; }
+  .ok-bat { border-left: 3px solid var(--low); background: #E1EDE6; padding: 10px 12px; font-size: 0.8rem; margin-bottom: 12px; }
+  .vacio { padding: 24px 18px; font-size: 0.82rem; color: var(--ink-soft); }
+
+  #zona-mapa { flex: 1; position: relative; overflow: hidden; }
+  #esquema { width: 100%; height: 100%; display: block; position: absolute; inset: 0; }
+  .marcador { position: absolute; transform: translate(-50%, -50%); cursor: pointer; z-index: 2; }
+  .marcador:hover, .marcador.activo { z-index: 20; }
+  .marcador.oculto { display: none; }
+  .marcador .punto { width: 18px; height: 18px; border: 2px solid var(--ink); box-shadow: 0 0 0 3px var(--paper); }
+  .marcador.activo .punto { box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--accent); }
+  .marcador .tooltip {
+    display: none; position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%);
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: 4px;
+    padding: 8px 12px; font-size: 0.78rem; white-space: nowrap; z-index: 10;
+  }
+  .marcador:hover .tooltip, .marcador.activo .tooltip { display: block; }
+  .tooltip .t-nombre { font-weight: 600; margin-bottom: 2px; }
+  .tooltip .t-dato { font-family: var(--mono); color: var(--ink-soft); }
+  /* ---------- Mapa real ---------- */
+  #mapaReal { position: absolute; inset: 0; z-index: 0; display: none; }
+  .modo-real #mapaReal { display: block; }
+  .modo-real #esquema, .modo-real #capaRuta, .modo-real #deposito { display: none !important; }
+  .leaflet-container { font-family: inherit; background: var(--paper); }
+  .leaflet-tile-pane { filter: grayscale(0.55) sepia(0.12) contrast(0.95); }
+  .icono-leaflet { background: none; border: none; }
+  .icono-leaflet .marcador { left: 50%; top: 50%; }
+  .deposito-real {
+    width: 24px; height: 24px; background: var(--ink); color: var(--paper-raised); border-radius: 3px;
+    font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 3px var(--paper);
+  }
+  .btn-modo {
+    position: absolute; top: 16px; left: 16px; z-index: 30;
+    background: var(--paper-raised); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 4px; padding: 8px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  }
+  .btn-modo:hover { border-color: var(--ink); }
+  .aviso-mapa {
+    display: none; position: absolute; top: 62px; left: 16px; z-index: 30; max-width: 420px;
+    gap: 10px; align-items: flex-start; background: var(--paper-raised); border: 1px solid var(--line);
+    border-left: 3px solid var(--mid); border-radius: 4px; padding: 10px 12px; font-size: 0.78rem;
+  }
+  .aviso-mapa button { background: none; border: none; font-size: 1rem; cursor: pointer; color: var(--ink-soft); padding: 0 2px; line-height: 1; }
+
+  /* ---------- Detalle por contenedor ---------- */
+  #detalle { display: none; overflow-y: auto; flex: 1; }
+  aside.viendo-detalle #detalle { display: block; }
+  aside.viendo-detalle .filtros, aside.viendo-detalle #lista { display: none; }
+  .det-volver {
+    display: block; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--line);
+    padding: 12px 18px; font-size: 0.8rem; color: var(--accent); font-weight: 600; cursor: pointer;
+  }
+  .det-volver:hover { background: var(--paper); }
+  .det-cabecera { padding: 14px 18px 4px; }
+  .det-cabecera h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+  .det-cabecera .dir { font-size: 0.8rem; color: var(--ink-soft); margin-top: 2px; }
+  .chip { display: inline-block; margin-top: 8px; padding: 3px 9px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; color: #fff; }
+  .det-tacho { display: flex; align-items: center; gap: 6px; padding: 6px 18px 2px; }
+  .det-tacho svg { width: 150px; height: auto; flex-shrink: 0; }
+  .det-grande { font-family: var(--mono); font-size: 2rem; font-weight: 600; line-height: 1; }
+  .det-grande-nota { font-size: 0.74rem; color: var(--ink-soft); margin-top: 4px; }
+  .det-datos { margin: 10px 18px; border-top: 1px solid var(--line); }
+  .det-datos div { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 0.8rem; }
+  .det-datos dt { color: var(--ink-soft); }
+  .det-datos dd { margin: 0; font-family: var(--mono); font-weight: 600; text-align: right; }
+  .det-bloque { padding: 6px 18px 12px; }
+  .det-bloque h3 { font-size: 0.84rem; font-weight: 600; margin: 6px 0 2px; }
+  .det-bloque .nota { font-size: 0.72rem; color: var(--ink-soft); margin: 0 0 6px; }
+  .det-ruta { margin: 4px 18px 18px; padding: 10px 12px; font-size: 0.78rem; border-left: 3px solid var(--accent); background: #E1EDE6; }
+  .det-ruta.no { border-left-color: var(--line); background: var(--paper); color: var(--ink-soft); }
+
+  /* ---------- Ruta de recolección ---------- */
+  #capaRuta { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; display: none; }
+  .mostrar-ruta #capaRuta { display: block; }
+  .mostrar-ruta #capaRuta .trazo { animation: aparecer 0.5s ease; }
+  @keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .mostrar-ruta #capaRuta .trazo { animation: none; } }
+  .btn-ruta {
+    position: absolute; top: 16px; right: 16px; z-index: 30;
+    background: var(--paper-raised); color: var(--ink); border: 1px solid var(--ink);
+    border-radius: 4px; padding: 8px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  }
+  .mostrar-ruta .btn-ruta { background: var(--ink); color: var(--paper-raised); }
+  .panel-ruta {
+    display: none; position: absolute; top: 60px; right: 16px; z-index: 30; width: 270px;
+    max-height: calc(100% - 175px); overflow-y: auto;
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: 4px; font-size: 0.8rem;
+  }
+  .mostrar-ruta .panel-ruta { display: block; }
+  .pr-cabecera { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .pr-cabecera strong { display: block; font-size: 0.9rem; margin-bottom: 4px; }
+  .pr-cifras { display: flex; gap: 16px; margin-top: 8px; }
+  .pr-cifras div { color: var(--ink-soft); font-size: 0.74rem; }
+  .pr-cifras b { display: block; font-family: var(--mono); font-size: 1rem; color: var(--ink); }
+  .pr-ahorro { margin-top: 8px; font-size: 0.74rem; color: var(--low); }
+  .pr-lista { list-style: none; margin: 0; padding: 4px 0; }
+  .pr-lista li { display: flex; gap: 10px; padding: 7px 14px; align-items: baseline; cursor: pointer; }
+  .pr-lista li:hover { background: var(--paper); }
+  .pr-lista .n { font-family: var(--mono); font-weight: 600; color: var(--accent); min-width: 16px; }
+  .pr-lista .dir { color: var(--ink-soft); font-size: 0.74rem; }
+  .pr-lista .motivo { font-size: 0.72rem; color: var(--high); }
+  .pr-criterio { padding: 10px 14px; border-top: 1px solid var(--line); font-size: 0.72rem; color: var(--ink-soft); }
+  .nro-ruta {
+    display: none; position: absolute; top: -12px; left: -14px; min-width: 17px; height: 17px; padding: 0 3px;
+    border-radius: 9px; background: var(--accent); color: #fff; font-family: var(--mono);
+    font-size: 10px; font-weight: 700; align-items: center; justify-content: center;
+  }
+  .mostrar-ruta .en-ruta .nro-ruta { display: flex; }
+  .mostrar-ruta .marcador.en-ruta.oculto { display: block; }
+  .mostrar-ruta .marcador:not(.en-ruta) .punto { opacity: 0.35; }
+  .deposito {
+    display: none; position: absolute; transform: translate(-50%, -50%); z-index: 3;
+    width: 22px; height: 22px; background: var(--ink); color: var(--paper-raised); border-radius: 3px;
+    font-size: 11px; font-weight: 700; align-items: center; justify-content: center;
+  }
+  .mostrar-ruta .deposito { display: flex; }
+  .deposito .tooltip { left: 50%; }
+  .deposito:hover .tooltip { display: block; }
+
+  .leyenda {
+    position: absolute; bottom: 18px; left: 18px; z-index: 5;
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: 4px;
+    padding: 8px 12px; font-size: 0.76rem; display: flex; gap: 14px;
+  }
+  .leyenda span { display: flex; align-items: center; gap: 5px; color: var(--ink-soft); }
+
+  /* ---------- Panel de estadísticas ---------- */
+  .velo { position: fixed; inset: 0; background: rgba(30,42,40,0.45); display: none; z-index: 50; }
+  .velo.abierto { display: block; }
+  .panel-stats {
+    position: fixed; top: 0; right: 0; height: 100vh; width: min(760px, 100vw);
+    background: var(--paper-raised); border-left: 1px solid var(--line); z-index: 60;
+    transform: translateX(100%); transition: transform 0.25s ease; display: flex; flex-direction: column;
+  }
+  .panel-stats.abierto { transform: translateX(0); }
+  @media (prefers-reduced-motion: reduce) { .panel-stats { transition: none; } }
+  .ps-cabecera { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; border-bottom: 1px solid var(--line); }
+  .ps-cabecera h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+  .ps-cabecera p { margin: 2px 0 0; font-size: 0.78rem; color: var(--ink-soft); }
+  .cerrar { background: none; border: 1px solid var(--line); border-radius: 4px; width: 34px; height: 34px; cursor: pointer; font-size: 1.1rem; color: var(--ink); }
+  .ps-cuerpo { overflow-y: auto; padding: 22px 24px 32px; display: grid; gap: 26px; }
+
+  .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .kpi { padding: 12px 14px; border: 1px solid var(--line); border-radius: 4px; }
+  .kpi .k-valor { font-family: var(--mono); font-size: 1.45rem; font-weight: 600; }
+  .kpi .k-nombre { font-size: 0.76rem; color: var(--ink-soft); margin-top: 2px; }
+
+  .bloque h3 { font-size: 0.92rem; font-weight: 600; margin: 0 0 4px; }
+  .bloque .nota { font-size: 0.76rem; color: var(--ink-soft); margin: 0 0 12px; }
+  .grafico { width: 100%; height: auto; display: block; }
+  .grafico text { font-family: "Public Sans", sans-serif; }
+
+  .distribucion { display: flex; height: 28px; border-radius: 3px; overflow: hidden; }
+  .distribucion div { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.76rem; font-weight: 600; font-family: var(--mono); }
+  .dist-leyenda { display: flex; gap: 16px; margin-top: 8px; font-size: 0.76rem; color: var(--ink-soft); }
+  .dist-leyenda span { display: flex; align-items: center; gap: 5px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  th { text-align: left; font-weight: 600; color: var(--ink-soft); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  td { padding: 8px; border-bottom: 1px solid var(--line); }
+  td.num { font-family: var(--mono); text-align: right; }
+  th.num { text-align: right; }
+  .orden { font-family: var(--mono); color: var(--ink-soft); }
+
+  @media (max-width: 760px) {
+    main { flex-direction: column; }
+    aside { width: 100%; height: 240px; border-right: none; border-bottom: 1px solid var(--line); }
+    .resumen { display: none; }
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Contenedores de la zona piloto</h1>
+    <div class="subtitulo">Monitoreo de nivel de llenado (datos de ejemplo)</div>
+  </div>
+  <div class="derecha">
+    <div class="resumen">
+      <div>Activos<strong id="totalActivos">–</strong></div>
+      <div>En alerta<strong id="totalAlerta">–</strong></div>
+      <div>Promedio<strong id="promedio">–</strong></div>
+      <div>Batería baja<strong id="totalBateria">–</strong></div>
+    </div>
+    <button class="btn-stats" id="abrirStats" aria-haspopup="dialog">
+      <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="9" width="3" height="6"/><rect x="6.5" y="5" width="3" height="10"/><rect x="12" y="1" width="3" height="14"/></svg>
+      Ver estadísticas
+    </button>
+  </div>
+</header>
+
+<main>
+  <aside>
+    <div class="filtros" role="group" aria-label="Filtrar por estado">
+      <button class="filtro activo" data-filtro="todos">Todos</button>
+      <button class="filtro" data-filtro="alerta">En alerta</button>
+      <button class="filtro" data-filtro="medio">Medio</button>
+      <button class="filtro" data-filtro="bajo">Bajo</button>
+      <button class="filtro" data-filtro="bateria">Batería baja</button>
+    </div>
+    <div id="lista"></div>
+    <div id="detalle" aria-live="polite"></div>
+  </aside>
+  <div id="zona-mapa">
+    <div id="mapaReal"></div>
+    <svg id="esquema" viewBox="0 0 800 500" preserveAspectRatio="none" aria-hidden="true">
+      <!-- manzanas / plaza -->
+      <rect x="490" y="140" width="140" height="150" fill="#DDE3D5"/>
+      <text x="560" y="220" text-anchor="middle" font-size="11" fill="#7F8C84">Plaza</text>
+      <!-- calles horizontales -->
+      <line x1="0" y1="130" x2="800" y2="130" stroke="#CFCABC" stroke-width="10"/>
+      <line x1="0" y1="300" x2="800" y2="300" stroke="#CFCABC" stroke-width="10"/>
+      <line x1="0" y1="420" x2="800" y2="420" stroke="#CFCABC" stroke-width="6"/>
+      <line x1="0" y1="50"  x2="800" y2="50"  stroke="#CFCABC" stroke-width="6"/>
+      <!-- calles verticales -->
+      <line x1="80"  y1="0" x2="80"  y2="500" stroke="#CFCABC" stroke-width="6"/>
+      <line x1="200" y1="0" x2="200" y2="500" stroke="#CFCABC" stroke-width="10"/>
+      <line x1="340" y1="0" x2="340" y2="500" stroke="#CFCABC" stroke-width="6"/>
+      <line x1="480" y1="0" x2="480" y2="500" stroke="#CFCABC" stroke-width="10"/>
+      <line x1="640" y1="0" x2="640" y2="500" stroke="#CFCABC" stroke-width="10"/>
+      <line x1="740" y1="0" x2="740" y2="500" stroke="#CFCABC" stroke-width="6"/>
+      <!-- diagonal -->
+      <line x1="0" y1="500" x2="340" y2="300" stroke="#CFCABC" stroke-width="6"/>
+    </svg>
+    <svg id="capaRuta" viewBox="0 0 800 500" preserveAspectRatio="none" aria-hidden="true"></svg>
+    <div class="deposito marcador-deposito" id="deposito" title="Depósito municipal (inicio y fin de la ruta)">D</div>
+    <button class="btn-ruta" id="btnRuta" aria-pressed="false">Mostrar ruta de recolección</button>
+    <button class="btn-modo" id="btnModo">Ver mapa real</button>
+    <div class="aviso-mapa" id="avisoMapa" role="status"><span></span><button id="cerrarAviso" aria-label="Cerrar aviso">×</button></div>
+    <div class="panel-ruta" id="panelRuta" aria-live="polite"></div>
+    <div class="leyenda">
+      <span><span class="punto" style="background:#3F8F6F;"></span>Bajo (&lt;50%)</span>
+      <span><span class="punto" style="background:#C98A2E;"></span>Medio (50–79%)</span>
+      <span><span class="punto" style="background:#B23B3B;"></span>Alerta (≥80%)</span>
+    </div>
+  </div>
+</main>
+
+<!-- Panel de estadísticas -->
+<div class="velo" id="velo"></div>
+<section class="panel-stats" id="panelStats" role="dialog" aria-modal="true" aria-labelledby="tituloStats" aria-hidden="true">
+  <div class="ps-cabecera">
+    <div>
+      <h2 id="tituloStats">Estadísticas de la zona piloto</h2>
+      <p>Calculadas a partir de los datos actuales de los contenedores</p>
+    </div>
+    <button class="cerrar" id="cerrarStats" aria-label="Cerrar estadísticas">×</button>
+  </div>
+  <div class="ps-cuerpo">
+    <div class="kpis" id="kpis"></div>
+
+    <div class="bloque">
+      <h3>Distribución por estado</h3>
+      <p class="nota">Cantidad de contenedores en cada rango de llenado.</p>
+      <div class="distribucion" id="distribucion"></div>
+      <div class="dist-leyenda">
+        <span><span class="punto" style="background:#3F8F6F;"></span>Bajo</span>
+        <span><span class="punto" style="background:#C98A2E;"></span>Medio</span>
+        <span><span class="punto" style="background:#B23B3B;"></span>Alerta</span>
+      </div>
+    </div>
+
+    <div class="bloque">
+      <h3>Llenado por contenedor</h3>
+      <p class="nota">Ordenado de mayor a menor. La línea marca el umbral de alerta (80%).</p>
+      <svg class="grafico" id="graficoBarras"></svg>
+    </div>
+
+    <div class="bloque">
+      <h3>Promedio de llenado en las últimas 24 horas</h3>
+      <p class="nota">Serie simulada para la demo; con ThingSpeak se reemplaza por el historial real.</p>
+      <svg class="grafico" id="graficoLinea"></svg>
+    </div>
+
+    <div class="bloque">
+      <h3>Estado de las baterías</h3>
+      <p class="nota">Autonomía estimada con batería 18650 y un envío cada 15 min (~15 mAh/día). Por debajo de 20% conviene cambiarla en la próxima recolección.</p>
+      <div id="alertasBateria"></div>
+      <svg class="grafico" id="graficoBaterias"></svg>
+    </div>
+
+    <div class="bloque">
+      <h3>Orden sugerido de recolección</h3>
+      <p class="nota">Prioriza los contenedores que se llenan antes, según su ritmo de llenado estimado.</p>
+      <table>
+        <thead><tr><th>#</th><th>Contenedor</th><th class="num">Llenado</th><th class="num">%/hora</th><th class="num">Lleno en</th><th class="num">Batería</th></tr></thead>
+        <tbody id="tablaRuta"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<script>
+/*
+  DATOS DE CONTENEDORES (de ejemplo)
+  ----------------------------------
+  lat / lng: coordenadas del contenedor. Son de ejemplo (zona céntrica de
+             Buenos Aires): para usar las reales, en Google Maps hacé click
+             derecho sobre el punto y copiá los dos números que aparecen.
+  llenado: porcentaje actual.
+  ritmo: cuántos puntos de % sube por hora (estimado). Sirve para
+         calcular en cuánto tiempo se llena cada contenedor.
+  bateria: carga restante en % (en el equipo real se mide la tensión
+           de la batería con el ADC del ESP32 y se envía como field2).
+*/
+
+/*
+  ESTIMACIÓN DE AUTONOMÍA
+  Batería 18650 de 3000 mAh, aprovechando ~80% = 2400 mAh.
+  Consumo estimado con deep sleep y un envío cada 15 min: ~15 mAh/día.
+  => una carga completa dura ~160 días. Son valores a verificar con
+  multímetro cuando se arme el hardware real.
+*/
+const CAPACIDAD_UTIL_MAH = 2400;
+const CONSUMO_DIARIO_MAH = 15;
+const UMBRAL_BATERIA_BAJA = 20;
+const contenedores = [
+  { id: "c01", nombre: "Contenedor 01", direccion: "Av. San Martín y Rivadavia", lat: -34.60530, lng: -58.38825, llenado: 22, ritmo: 2.1, bateria: 92 },
+  { id: "c02", nombre: "Contenedor 02", direccion: "Belgrano 450",               lat: -34.60845, lng: -58.38440, llenado: 61, ritmo: 3.4, bateria: 64 },
+  { id: "c03", nombre: "Contenedor 03", direccion: "Plaza central",              lat: -34.60620, lng: -58.37985, llenado: 87, ritmo: 4.8, bateria: 41 },
+  { id: "c04", nombre: "Contenedor 04", direccion: "Rivadavia 120",              lat: -34.60944, lng: -58.37600, llenado: 34, ritmo: 1.9, bateria: 15 },
+  { id: "c05", nombre: "Contenedor 05", direccion: "Terminal de ómnibus",        lat: -34.60440, lng: -58.38195, llenado: 55, ritmo: 5.2, bateria: 78 },
+  { id: "c06", nombre: "Contenedor 06", direccion: "Mitre y Sarmiento",          lat: -34.60584, lng: -58.38562, llenado: 78, ritmo: 3.9, bateria: 55 },
+  { id: "c07", nombre: "Contenedor 07", direccion: "Escuela N° 12",              lat: -34.61034, lng: -58.38737, llenado: 12, ritmo: 1.2, bateria: 88 },
+  { id: "c08", nombre: "Contenedor 08", direccion: "Mercado municipal",          lat: -34.60548, lng: -58.37740, llenado: 93, ritmo: 6.0, bateria: 9 },
+  { id: "c09", nombre: "Contenedor 09", direccion: "Hospital regional",          lat: -34.60710, lng: -58.37390, llenado: 48, ritmo: 2.7, bateria: 70 },
+  { id: "c10", nombre: "Contenedor 10", direccion: "Moreno 890",                 lat: -34.61052, lng: -58.38125, llenado: 67, ritmo: 2.2, bateria: 33 },
+  { id: "c11", nombre: "Contenedor 11", direccion: "Club social",                lat: -34.61160, lng: -58.37845, llenado: 29, ritmo: 1.5, bateria: 97 },
+  { id: "c12", nombre: "Contenedor 12", direccion: "Plaza central, lado norte",  lat: -34.60746, lng: -58.37898, llenado: 82, ritmo: 4.1, bateria: 18 },
+  { id: "c13", nombre: "Contenedor 13", direccion: "Universidad",                lat: -34.60692, lng: -58.38335, llenado: 40, ritmo: 3.0, bateria: 60 },
+  { id: "c14", nombre: "Contenedor 14", direccion: "Estación de tren",           lat: -34.60458, lng: -58.37460, llenado: 71, ritmo: 4.4, bateria: 47 },
+];
+
+// Depósito municipal: desde donde sale y adonde vuelve el camión.
+const DEPOSITO = { lat: -34.6044, lng: -58.3883 };
+
+/*
+  Para el mapa esquemático (el que se usa sin internet) se convierten
+  las coordenadas en posiciones relativas dentro del dibujo (0 a 1).
+*/
+(function proyectarEsquema() {
+  const puntos = [...contenedores, DEPOSITO];
+  const lats = puntos.map(p => p.lat), lngs = puntos.map(p => p.lng);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+  const margen = 0.07;
+  puntos.forEach(p => {
+    p.x = margen + (1 - 2 * margen) * (p.lng - minLng) / ((maxLng - minLng) || 1);
+    p.y = margen + (1 - 2 * margen) * (maxLat - p.lat) / ((maxLat - minLat) || 1);
+  });
+})();
+
+const COLOR = { bajo: "#3F8F6F", medio: "#C98A2E", alerta: "#B23B3B" };
+function nivel(p) { return p >= 80 ? "alerta" : p >= 50 ? "medio" : "bajo"; }
+function colorSegunLlenado(p) { return COLOR[nivel(p)]; }
+function estadoTexto(p) { return { alerta: "Alerta activa", medio: "Medio", bajo: "Bajo" }[nivel(p)]; }
+function horasHastaLleno(c) { return c.llenado >= 100 ? 0 : (100 - c.llenado) / c.ritmo; }
+function formatoHoras(h) {
+  if (h <= 0) return "lleno";
+  if (h < 1) return Math.round(h * 60) + " min";
+  return h.toFixed(1).replace(".", ",") + " h";
+}
+
+function diasRestantes(c) { return Math.round(c.bateria / 100 * CAPACIDAD_UTIL_MAH / CONSUMO_DIARIO_MAH); }
+function bateriaBaja(c) { return c.bateria < UMBRAL_BATERIA_BAJA; }
+function colorBateria(b) { return b < UMBRAL_BATERIA_BAJA ? "#B23B3B" : b < 40 ? "#C98A2E" : "#4B5A56"; }
+function iconoBateria(b) {
+  const w = Math.max(1, Math.round(b / 100 * 14));
+  const col = colorBateria(b);
+  return `<svg class="ico-bat" viewBox="0 0 20 10" aria-hidden="true"><rect x="0.5" y="0.5" width="17" height="9" rx="1.5" fill="none" stroke="${col}"/><rect x="18" y="3" width="1.5" height="4" fill="${col}"/><rect x="2" y="2" width="${w}" height="6" fill="${col}"/></svg>`;
+}
+function pasaFiltro(c) {
+  if (filtroActual === "todos") return true;
+  if (filtroActual === "bateria") return bateriaBaja(c);
+  return nivel(c.llenado) === filtroActual;
+}
+
+/*
+  RUTA DE RECOLECCIÓN
+  -------------------
+  El camión sale del depósito, pasa solo por los contenedores que lo
+  necesitan y vuelve. El orden se arma eligiendo siempre el contenedor
+  pendiente más cercano (método del "vecino más cercano"): no es la ruta
+  óptima perfecta, pero es simple y da buenos resultados.
+  Las distancias se miden "por las calles" (en L, no en línea recta).
+  Las distancias se calculan con las coordenadas reales (lat/lng).
+*/
+const HORAS_ANTICIPACION = 6;   // se incluyen los que entran en alerta dentro de este plazo
+let mostrandoRuta = false;
+
+function motivoRecoleccion(c) {
+  if (c.llenado >= 80) return "en alerta";
+  const horas = (80 - c.llenado) / c.ritmo;
+  if (horas <= HORAS_ANTICIPACION) return "alerta en " + formatoHoras(horas);
+  return null;
+}
+function metrosEntre(a, b) {
+  // metros por grado: ~110.540 en latitud y ~111.320·cos(latitud) en longitud
+  const mLat = 110540, mLng = 111320 * Math.cos(a.lat * Math.PI / 180);
+  return Math.abs(a.lat - b.lat) * mLat + Math.abs(a.lng - b.lng) * mLng;
+}
+function calcularRuta(pendientes) {
+  const restantes = [...pendientes];
+  const orden = [];
+  let actual = DEPOSITO, metros = 0;
+  while (restantes.length) {
+    let mejor = 0;
+    restantes.forEach((c, i) => { if (metrosEntre(actual, c) < metrosEntre(actual, restantes[mejor])) mejor = i; });
+    const sig = restantes.splice(mejor, 1)[0];
+    metros += metrosEntre(actual, sig);
+    orden.push(sig);
+    actual = sig;
+  }
+  metros += metrosEntre(actual, DEPOSITO);
+  return { orden, metros };
+}
+function formatoKm(m) { return (m / 1000).toFixed(1).replace('.', ',') + " km"; }
+
+function renderRutaMapa() {
+  const zona = document.getElementById('zona-mapa');
+  zona.classList.toggle('mostrar-ruta', mostrandoRuta);
+  const btn = document.getElementById('btnRuta');
+  btn.textContent = mostrandoRuta ? "Ocultar ruta" : "Mostrar ruta de recolección";
+  btn.setAttribute('aria-pressed', mostrandoRuta);
+
+  const dep = document.getElementById('deposito');
+  dep.style.left = (DEPOSITO.x * 100) + '%';
+  dep.style.top = (DEPOSITO.y * 100) + '%';
+  if (modoMapa === 'real' && mapaReal) {
+    if (mostrandoRuta) marcadorDeposito.addTo(mapaReal); else marcadorDeposito.remove();
+  }
+
+  const pendientes = contenedores.filter(c => motivoRecoleccion(c));
+  const ruta = calcularRuta(pendientes);
+  const todos = calcularRuta(contenedores);
+
+  // números sobre los marcadores
+  contenedores.forEach(c => {
+    const m = document.getElementById('marcador-' + c.id);
+    if (!m) return;
+    const pos = ruta.orden.indexOf(c);
+    m.classList.toggle('en-ruta', pos >= 0);
+    let badge = m.querySelector('.nro-ruta');
+    if (!badge) { badge = document.createElement('span'); badge.className = 'nro-ruta'; m.appendChild(badge); }
+    badge.textContent = pos >= 0 ? pos + 1 : '';
+  });
+
+  // trazado en el mapa real (tramos en L, aproximados)
+  if (mapaReal) {
+    capaRutaReal.clearLayers();
+    if (modoMapa === 'real' && mostrandoRuta) {
+      const pts = [DEPOSITO, ...ruta.orden, DEPOSITO];
+      const linea = [[pts[0].lat, pts[0].lng]];
+      for (let i = 1; i < pts.length; i++) {
+        linea.push([pts[i - 1].lat, pts[i].lng]);
+        linea.push([pts[i].lat, pts[i].lng]);
+      }
+      L.polyline(linea, { color: '#F7F5EF', weight: 8, opacity: 0.9, lineJoin: 'round', interactive: false }).addTo(capaRutaReal);
+      L.polyline(linea, { color: '#2B6E5C', weight: 4, lineJoin: 'round', interactive: false }).addTo(capaRutaReal);
+    }
+  }
+
+  // trazado en el esquema (tramos en L)
+  const puntos = [DEPOSITO, ...ruta.orden, DEPOSITO].map(p => [p.x * 800, p.y * 500]);
+  let d = `M${puntos[0][0]},${puntos[0][1]}`;
+  for (let i = 1; i < puntos.length; i++) d += ` L${puntos[i][0]},${puntos[i - 1][1]} L${puntos[i][0]},${puntos[i][1]}`;
+  document.getElementById('capaRuta').innerHTML = `
+    <g class="trazo">
+      <path d="${d}" fill="none" stroke="#F7F5EF" stroke-width="7" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+      <path d="${d}" fill="none" stroke="#2B6E5C" stroke-width="3" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+    </g>`;
+
+  // panel con el detalle
+  const ahorro = Math.round((1 - ruta.metros / todos.metros) * 100);
+  document.getElementById('panelRuta').innerHTML = ruta.orden.length === 0
+    ? `<div class="pr-cabecera"><strong>No hace falta salir</strong>Ningún contenedor está en alerta ni lo va a estar en las próximas ${HORAS_ANTICIPACION} horas.</div>`
+    : `<div class="pr-cabecera">
+        <strong>Ruta de recolección</strong>
+        Sale del depósito (D), recorre ${ruta.orden.length} contenedores y vuelve.
+        <div class="pr-cifras">
+          <div><b>${ruta.orden.length}</b>paradas</div>
+          <div><b>${formatoKm(ruta.metros)}</b>recorrido</div>
+        </div>
+        <div class="pr-ahorro">Pasando por los ${contenedores.length} contenedores serían ${formatoKm(todos.metros)}: esta ruta recorre ${ahorro}% menos.</div>
+      </div>
+      <ol class="pr-lista">
+        ${ruta.orden.map((c, i) => `
+          <li data-id="${c.id}">
+            <span class="n">${i + 1}</span>
+            <span>${c.nombre} · ${c.llenado}%<br>
+              <span class="dir">${c.direccion}</span><br>
+              <span class="motivo">${motivoRecoleccion(c)}${bateriaBaja(c) ? ' · cambiar batería' : ''}</span>
+            </span>
+          </li>`).join('')}
+      </ol>
+      <div class="pr-criterio">Incluye los contenedores en alerta (≥80%) y los que llegan a la alerta en las próximas ${HORAS_ANTICIPACION} horas. Distancias aproximadas: se miden en tramos rectos (en L) entre puntos, no por el trazado exacto de las calles.</div>`;
+  document.querySelectorAll('.pr-lista li').forEach(li => li.addEventListener('click', () => seleccionar(li.dataset.id)));
+}
+
+document.getElementById('btnRuta').addEventListener('click', () => {
+  mostrandoRuta = !mostrandoRuta;
+  renderRutaMapa();
+});
+
+let filtroActual = "todos";
+let seleccionado = null;
+
+/* ---------- Mapa y lista ---------- */
+function contenidoMarcador(c) {
+  return `
+      <span class="punto" style="background:${colorSegunLlenado(c.llenado)};"></span>
+      ${bateriaBaja(c) ? '<span class="aviso-bat" title="Batería baja">!</span>' : ''}
+      <div class="tooltip">
+        <div class="t-nombre">${c.nombre}, ${c.direccion}</div>
+        <div class="t-dato">${c.llenado}% · ${estadoTexto(c.llenado)} · lleno en ${formatoHoras(horasHastaLleno(c))}</div>
+        <div class="t-dato" style="color:${colorBateria(c.bateria)}">Batería ${c.bateria}% · ~${diasRestantes(c)} días</div>
+      </div>`;
+}
+
+function renderMapa() {
+  const zona = document.getElementById('zona-mapa');
+  zona.querySelectorAll('.marcador').forEach(el => el.remove());
+  Object.values(marcadoresReales).forEach(m => m.remove());
+  marcadoresReales = {};
+
+  if (modoMapa === 'real') {
+    contenedores.forEach(c => {
+      const m = L.marker([c.lat, c.lng], {
+        icon: L.divIcon({
+          className: 'icono-leaflet', iconSize: [24, 24], iconAnchor: [12, 12],
+          html: `<div class="marcador" id="marcador-${c.id}">${contenidoMarcador(c)}</div>`
+        }),
+        riseOnHover: true, keyboard: false
+      }).addTo(mapaReal);
+      m.on('click', () => seleccionar(c.id));
+      marcadoresReales[c.id] = m;
+    });
+    return;
+  }
+
+  contenedores.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'marcador';
+    el.id = 'marcador-' + c.id;
+    el.style.left = (c.x * 100) + '%';
+    el.style.top = (c.y * 100) + '%';
+    el.innerHTML = contenidoMarcador(c);
+    el.addEventListener('click', () => seleccionar(c.id));
+    zona.appendChild(el);
+  });
+}
+
+/*
+  MAPA REAL (Leaflet + OpenStreetMap, gratis y sin clave)
+  -------------------------------------------------------
+  Importante: OpenStreetMap solo entrega el mapa a páginas publicadas en
+  internet (por ejemplo en GitHub Pages). Si el archivo se abre con doble
+  click, el panel arranca directamente con el mapa esquemático.
+  Si el mapa real no carga (sin internet, bloqueo, etc.), también pasa
+  solo al esquemático para que el panel nunca quede en blanco.
+*/
+let modoMapa = 'esquema';
+let mapaReal = null, capaRutaReal = null, marcadorDeposito = null;
+let marcadoresReales = {};
+
+function mostrarAviso(texto) {
+  const a = document.getElementById('avisoMapa');
+  if (!texto) { a.style.display = 'none'; return; }
+  a.querySelector('span').textContent = texto;
+  a.style.display = 'flex';
+}
+
+function iniciarMapaReal() {
+  if (mapaReal) return true;
+  if (typeof L === 'undefined') return false;   // no se pudo descargar Leaflet
+  mapaReal = L.map('mapaReal', { zoomControl: false });
+  L.control.zoom({ position: 'bottomright' }).addTo(mapaReal);
+  const capa = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(mapaReal);
+
+  let cargadas = 0, errores = 0;
+  capa.on('tileload', () => { cargadas++; });
+  capa.on('tileerror', () => {
+    errores++;
+    if (cargadas === 0 && errores >= 4 && modoMapa === 'real')
+      volverAlEsquema('No se pudo cargar el mapa real (¿sin conexión?). Se muestra el mapa esquemático.');
+  });
+  setTimeout(() => {
+    if (cargadas === 0 && modoMapa === 'real')
+      volverAlEsquema('El mapa real tardó demasiado en cargar. Se muestra el mapa esquemático.');
+  }, 8000);
+
+  capaRutaReal = L.layerGroup().addTo(mapaReal);
+  marcadorDeposito = L.marker([DEPOSITO.lat, DEPOSITO.lng], {
+    icon: L.divIcon({ className: 'icono-leaflet', iconSize: [24, 24], iconAnchor: [12, 12],
+      html: '<div class="deposito-real" title="Depósito municipal (inicio y fin de la ruta)">D</div>' }),
+    interactive: false
+  });
+  return true;
+}
+
+function cambiarModo(modo) {
+  if (modo === 'real' && !iniciarMapaReal()) {
+    volverAlEsquema('No se pudo descargar la librería del mapa (¿sin conexión?). Se muestra el mapa esquemático.');
+    return;
+  }
+  modoMapa = modo;
+  const zona = document.getElementById('zona-mapa');
+  zona.classList.toggle('modo-real', modo === 'real');
+  document.getElementById('btnModo').textContent = modo === 'real' ? 'Ver esquema' : 'Ver mapa real';
+  renderMapa();
+  renderLista();
+  renderRutaMapa();
+  if (seleccionado) marcarSeleccion(seleccionado);
+  if (modo === 'real') {
+    mapaReal.invalidateSize();
+    const b = L.latLngBounds([...contenedores, DEPOSITO].map(p => [p.lat, p.lng]));
+    mapaReal.fitBounds(b, { padding: [40, 40] });
+  }
+}
+
+function volverAlEsquema(motivo) {
+  cambiarModo('esquema');
+  mostrarAviso(motivo);
+}
+
+function renderLista() {
+  const lista = document.getElementById('lista');
+  lista.innerHTML = '';
+  const visibles = contenedores.filter(pasaFiltro);
+  if (visibles.length === 0) {
+    lista.innerHTML = '<div class="vacio">No hay contenedores que cumplan este filtro. Probá con otro.</div>';
+  }
+  visibles.forEach(c => {
+    const fila = document.createElement('div');
+    fila.className = 'item' + (seleccionado === c.id ? ' activo' : '');
+    fila.id = 'item-' + c.id;
+    fila.tabIndex = 0;
+    fila.innerHTML = `
+      <span class="punto" style="background:${colorSegunLlenado(c.llenado)};"></span>
+      <div class="info">
+        <div class="nombre">${c.nombre}</div>
+        <div class="direccion">${c.direccion}</div>
+        <div class="barra"><i style="width:${c.llenado}%;background:${colorSegunLlenado(c.llenado)};"></i></div>
+      </div>
+      <div class="derecha-item">
+        <div class="valor">${c.llenado}%</div>
+        <div class="bat" style="color:${colorBateria(c.bateria)}" title="Batería: ${c.bateria}%, ~${diasRestantes(c)} días">${iconoBateria(c.bateria)}${c.bateria}%</div>
+      </div>`;
+    fila.addEventListener('click', () => seleccionar(c.id));
+    fila.addEventListener('keydown', e => { if (e.key === 'Enter') seleccionar(c.id); });
+    lista.appendChild(fila);
+  });
+  // en el mapa se ocultan los que no pasan el filtro
+  contenedores.forEach(c => {
+    const m = document.getElementById('marcador-' + c.id);
+    if (m) m.classList.toggle('oculto', !pasaFiltro(c));
+  });
+}
+
+function marcarSeleccion(id) {
+  document.querySelectorAll('.item, .marcador').forEach(el => el.classList.remove('activo'));
+  document.getElementById('item-' + id)?.classList.add('activo');
+  document.getElementById('marcador-' + id)?.classList.add('activo');
+  Object.entries(marcadoresReales).forEach(([k, m]) => m.setZIndexOffset(k === id ? 1000 : 0));
+}
+
+function seleccionar(id) {
+  seleccionado = id;
+  marcarSeleccion(id);
+  if (modoMapa === 'real' && marcadoresReales[id]) mapaReal.panTo(marcadoresReales[id].getLatLng());
+  abrirDetalle(id);
+}
+
+/*
+  DETALLE POR CONTENEDOR
+  ----------------------
+  "Última lectura" y el historial de 24 h son simulados para la demo.
+  Con ThingSpeak se reemplazan por los datos reales del canal de cada
+  contenedor (feeds.json?results=96 devuelve las últimas 24 h si se
+  envía un dato cada 15 minutos).
+*/
+const ALTURA_CONTENEDOR_CM = 40;   // la misma que usa el código del ESP32
+function numeroDe(c) { return parseInt(c.id.slice(1), 10); }
+function minutosUltimaLectura(c) { return (numeroDe(c) * 7) % 14 + 1; }
+function distanciaSensorCm(c) { return (1 - c.llenado / 100) * ALTURA_CONTENEDOR_CM; }
+
+// Historial simulado: hacia atrás el nivel baja según su ritmo; cuando llega a 0
+// es el momento en que se vació, y antes de eso estaba casi lleno.
+function historialContenedor(c) {
+  const puntos = [], vaciados = [];
+  let v = c.llenado;
+  for (let h = 0; h <= 24; h++) {
+    puntos.unshift({ h: -h, v: Math.max(0, v) });
+    v -= c.ritmo;
+    if (v < 0) { vaciados.push(-(h + 1) + (-v / c.ritmo)); v = 84 + (numeroDe(c) * 3) % 10; }
+  }
+  return { puntos, vaciados };
+}
+
+function dibujoTacho(c) {
+  const col = colorSegunLlenado(c.llenado);
+  const top = 30, fondo = 170, alto = fondo - top;
+  const yNivel = fondo - alto * c.llenado / 100;
+  const y80 = fondo - alto * 0.8;
+  const d = distanciaSensorCm(c).toFixed(1).replace('.', ',');
+  return `
+  <svg viewBox="0 0 170 190" role="img" aria-label="Contenedor lleno al ${c.llenado}%">
+    <rect x="46" y="4" width="36" height="14" rx="2" fill="#1E2A28"/>
+    <circle cx="57" cy="11" r="4" fill="#4B5A56"/><circle cx="71" cy="11" r="4" fill="#4B5A56"/>
+    <rect x="18" y="18" width="92" height="12" rx="2" fill="#4B5A56"/>
+    <path d="M24 30 L104 30 L98 172 L30 172 Z" fill="#F7F5EF" stroke="#1E2A28" stroke-width="2"/>
+    <clipPath id="clipTacho"><path d="M25 31 L103 31 L97 171 L31 171 Z"/></clipPath>
+    <rect x="20" y="${yNivel}" width="90" height="${fondo - yNivel + 2}" fill="${col}" clip-path="url(#clipTacho)" opacity="0.85"/>
+    <line x1="20" y1="${y80}" x2="108" y2="${y80}" stroke="#B23B3B" stroke-width="1.2" stroke-dasharray="4 3"/>
+    <text x="112" y="${y80 + 3}" font-size="9" fill="#B23B3B">80%</text>
+    <line x1="64" y1="19" x2="64" y2="${yNivel - 2}" stroke="#1E2A28" stroke-width="1" stroke-dasharray="2 2"/>
+    <path d="M60 ${yNivel - 7} L64 ${yNivel - 1} L68 ${yNivel - 7}" fill="none" stroke="#1E2A28" stroke-width="1"/>
+    <text x="112" y="${Math.max(44, (19 + yNivel) / 2 + 3)}" font-size="9.5" fill="#1E2A28" font-family="ui-monospace, Consolas, monospace">d = ${d} cm</text>
+    <text x="112" y="14" font-size="9" fill="#4B5A56">sensor</text>
+    <rect x="28" y="172" width="12" height="6" rx="1" fill="#1E2A28"/><rect x="88" y="172" width="12" height="6" rx="1" fill="#1E2A28"/>
+  </svg>`;
+}
+
+function graficoHistorial(c) {
+  const { puntos, vaciados } = historialContenedor(c);
+  const W = 280, H = 130, izq = 26, der = 6, arriba = 8, abajo = 20;
+  const ancho = W - izq - der, alto = H - arriba - abajo;
+  const X = h => izq + ancho * (h + 24) / 24;
+  const Y = v => arriba + alto * (1 - v / 100);
+  let s = '';
+  [0, 50, 100].forEach(v => {
+    s += `<line x1="${izq}" y1="${Y(v)}" x2="${W - der}" y2="${Y(v)}" stroke="#E2DED3"/>`;
+    s += `<text x="${izq - 4}" y="${Y(v) + 3}" font-size="9" fill="#4B5A56" text-anchor="end">${v}</text>`;
+  });
+  s += `<line x1="${izq}" y1="${Y(80)}" x2="${W - der}" y2="${Y(80)}" stroke="#B23B3B" stroke-dasharray="3 3"/>`;
+  vaciados.forEach(h => {
+    s += `<line x1="${X(h)}" y1="${arriba}" x2="${X(h)}" y2="${H - abajo}" stroke="#2B6E5C" stroke-width="1" stroke-dasharray="1 2"/>`;
+    s += `<text x="${X(h)}" y="${arriba + 7}" font-size="8" fill="#2B6E5C" text-anchor="middle">vaciado</text>`;
+  });
+  // dibuja la serie cortando en cada vaciado (caída vertical a 0)
+  let d = '', prev = null;
+  puntos.forEach(p => {
+    if (prev && p.v < prev.v - 20) { // pasó un vaciado entre prev y p
+      const hv = vaciados.find(x => x > prev.h && x < p.h);
+      if (hv !== undefined) d += ` L${X(hv)},${Y(prev.v + c.ritmo * (hv - prev.h))} L${X(hv)},${Y(0)}`;
+    }
+    d += (d ? ' L' : 'M') + `${X(p.h).toFixed(1)},${Y(p.v).toFixed(1)}`;
+    prev = p;
+  });
+  s += `<path d="${d}" fill="none" stroke="${colorSegunLlenado(c.llenado)}" stroke-width="2" stroke-linejoin="round"/>`;
+  s += `<circle cx="${X(0)}" cy="${Y(c.llenado)}" r="3.5" fill="${colorSegunLlenado(c.llenado)}"/>`;
+  [-24, -12, 0].forEach(h => s += `<text x="${X(h)}" y="${H - 6}" font-size="9" fill="#4B5A56" text-anchor="${h === -24 ? 'start' : h === 0 ? 'end' : 'middle'}">${h === 0 ? 'ahora' : h + ' h'}</text>`);
+  return `<svg class="grafico" viewBox="0 0 ${W} ${H}" role="img" aria-label="Llenado en las últimas 24 horas">${s}</svg>`;
+}
+
+function abrirDetalle(id) {
+  const c = contenedores.find(x => x.id === id);
+  if (!c) return;
+  const { vaciados } = historialContenedor(c);
+  const ultimoVaciado = vaciados.length ? -vaciados[0] : null;
+  const horasAlerta = c.llenado >= 80 ? 0 : (80 - c.llenado) / c.ritmo;
+  const pendientes = contenedores.filter(x => motivoRecoleccion(x));
+  const ruta = calcularRuta(pendientes);
+  const parada = ruta.orden.indexOf(c);
+  const est = estadoTexto(c.llenado);
+
+  document.getElementById('detalle').innerHTML = `
+    <button class="det-volver" id="volverLista">‹ Volver a la lista</button>
+    <div class="det-cabecera">
+      <h2>${c.nombre}</h2>
+      <div class="dir">${c.direccion}</div>
+      <span class="chip" style="background:${colorSegunLlenado(c.llenado)}">${est}</span>
+    </div>
+    <div class="det-tacho">
+      ${dibujoTacho(c)}
+      <div>
+        <div class="det-grande" style="color:${colorSegunLlenado(c.llenado)}">${c.llenado}%</div>
+        <div class="det-grande-nota">de llenado. El sensor mide la distancia (d) hasta la basura.</div>
+      </div>
+    </div>
+    <dl class="det-datos">
+      <div><dt>Alerta de llenado</dt><dd>${horasAlerta === 0 ? 'activa' : 'en ' + formatoHoras(horasAlerta)}</dd></div>
+      <div><dt>Lleno en</dt><dd>${formatoHoras(horasHastaLleno(c))}</dd></div>
+      <div><dt>Ritmo de llenado</dt><dd>${c.ritmo.toFixed(1).replace('.', ',')} %/h</dd></div>
+      <div><dt>Último vaciado</dt><dd>${ultimoVaciado === null ? 'hace más de 24 h' : 'hace ' + formatoHoras(ultimoVaciado)}</dd></div>
+      <div><dt>Batería</dt><dd style="color:${colorBateria(c.bateria)}">${c.bateria}% · ~${diasRestantes(c)} días</dd></div>
+      <div><dt>Última lectura</dt><dd>hace ${minutosUltimaLectura(c)} min</dd></div>
+    </dl>
+    <div class="det-bloque">
+      <h3>Últimas 24 horas</h3>
+      <p class="nota">Nivel de llenado (%). Serie simulada para la demo.</p>
+      ${graficoHistorial(c)}
+    </div>
+    <div class="det-ruta ${parada < 0 ? 'no' : ''}">
+      ${parada >= 0
+        ? `Está en la ruta de recolección de hoy: <strong>parada ${parada + 1} de ${ruta.orden.length}</strong> (${motivoRecoleccion(c)}).${bateriaBaja(c) ? ' Aprovechar la parada para cambiar la batería.' : ''}`
+        : `No necesita recolección por ahora.${bateriaBaja(c) ? ' Ojo: la batería está baja y no hay una parada prevista; conviene programar el cambio.' : ''}`}
+    </div>`;
+  document.getElementById('volverLista').addEventListener('click', cerrarDetalle);
+  document.querySelector('aside').classList.add('viendo-detalle');
+  document.getElementById('detalle').scrollTop = 0;
+}
+
+function cerrarDetalle() {
+  document.querySelector('aside').classList.remove('viendo-detalle');
+  seleccionado = null;
+  document.querySelectorAll('.item, .marcador').forEach(el => el.classList.remove('activo'));
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.querySelector('aside').classList.contains('viendo-detalle')
+      && !document.getElementById('panelStats').classList.contains('abierto')) cerrarDetalle();
+});
+
+function actualizarResumen() {
+  const total = contenedores.length;
+  const alerta = contenedores.filter(c => c.llenado >= 80).length;
+  const promedio = Math.round(contenedores.reduce((s, c) => s + c.llenado, 0) / total);
+  document.getElementById('totalActivos').textContent = total;
+  document.getElementById('totalAlerta').textContent = alerta;
+  document.getElementById('promedio').textContent = promedio + '%';
+  const baja = contenedores.filter(bateriaBaja).length;
+  const el = document.getElementById('totalBateria');
+  el.textContent = baja;
+  el.style.color = baja ? '#B23B3B' : '';
+}
+
+document.querySelectorAll('.filtro').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.filtro').forEach(x => x.classList.remove('activo'));
+    b.classList.add('activo');
+    filtroActual = b.dataset.filtro;
+    renderLista();
+  });
+});
+
+/* ---------- Estadísticas ---------- */
+function renderKPIs() {
+  const total = contenedores.length;
+  const prom = contenedores.reduce((s, c) => s + c.llenado, 0) / total;
+  const alerta = contenedores.filter(c => c.llenado >= 80).length;
+  const proximas6h = contenedores.filter(c => c.llenado < 80 && (80 - c.llenado) / c.ritmo <= 6).length;
+  const masLleno = contenedores.reduce((a, b) => a.llenado > b.llenado ? a : b);
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="k-valor">${Math.round(prom)}%</div><div class="k-nombre">Llenado promedio</div></div>
+    <div class="kpi"><div class="k-valor" style="color:${COLOR.alerta}">${alerta}</div><div class="k-nombre">En alerta ahora</div></div>
+    <div class="kpi"><div class="k-valor">${proximas6h}</div><div class="k-nombre">Entran en alerta en 6 h</div></div>
+    <div class="kpi"><div class="k-valor">${masLleno.llenado}%</div><div class="k-nombre">Máximo (${masLleno.nombre.replace('Contenedor ', 'N° ')})</div></div>
+    <div class="kpi"><div class="k-valor" style="color:${contenedores.some(bateriaBaja) ? COLOR.alerta : 'inherit'}">${contenedores.filter(bateriaBaja).length}</div><div class="k-nombre">Con batería baja</div></div>`;
+}
+
+function renderDistribucion() {
+  const cuenta = { bajo: 0, medio: 0, alerta: 0 };
+  contenedores.forEach(c => cuenta[nivel(c.llenado)]++);
+  const total = contenedores.length;
+  document.getElementById('distribucion').innerHTML = ["bajo", "medio", "alerta"]
+    .filter(k => cuenta[k] > 0)
+    .map(k => `<div style="width:${cuenta[k] / total * 100}%;background:${COLOR[k]}" title="${cuenta[k]} contenedores">${cuenta[k]}</div>`)
+    .join('');
+}
+
+function renderBarras() {
+  const datos = [...contenedores].sort((a, b) => b.llenado - a.llenado);
+  const W = 700, fila = 22, izq = 150, der = 44, arriba = 8;
+  const H = arriba + datos.length * fila + 22;
+  const ancho = W - izq - der;
+  let s = '';
+  // grilla
+  [0, 25, 50, 75, 100].forEach(v => {
+    const x = izq + ancho * v / 100;
+    s += `<line x1="${x}" y1="${arriba}" x2="${x}" y2="${H - 20}" stroke="#E2DED3"/>`;
+    s += `<text x="${x}" y="${H - 6}" font-size="10" fill="#4B5A56" text-anchor="middle">${v}%</text>`;
+  });
+  datos.forEach((c, i) => {
+    const y = arriba + i * fila;
+    const w = ancho * c.llenado / 100;
+    s += `<text x="${izq - 8}" y="${y + 14}" font-size="11" fill="#1E2A28" text-anchor="end">${c.direccion.length > 22 ? c.direccion.slice(0, 21) + '…' : c.direccion}</text>`;
+    s += `<rect x="${izq}" y="${y + 4}" width="${w}" height="${fila - 8}" rx="2" fill="${colorSegunLlenado(c.llenado)}"><title>${c.nombre}: ${c.llenado}%</title></rect>`;
+    s += `<text x="${izq + w + 6}" y="${y + 14}" font-size="10.5" fill="#1E2A28" font-family="ui-monospace, Consolas, monospace">${c.llenado}%</text>`;
+  });
+  const xUmbral = izq + ancho * 0.8;
+  s += `<line x1="${xUmbral}" y1="${arriba - 4}" x2="${xUmbral}" y2="${H - 20}" stroke="#B23B3B" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+  const svg = document.getElementById('graficoBarras');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+}
+
+// Historial simulado: el promedio sube durante el día y baja tras la recolección de las 6 y las 18 h
+function historialSimulado() {
+  const ahora = new Date().getHours();
+  const actual = contenedores.reduce((s, c) => s + c.llenado, 0) / contenedores.length;
+  const puntos = [];
+  let v = actual;
+  for (let i = 0; i <= 24; i++) {
+    puntos.unshift({ hora: (ahora - i + 48) % 24, valor: Math.max(5, Math.min(100, v)) });
+    const h = (ahora - i + 48) % 24;
+    if (h === 6 || h === 18) v += 38;        // antes de la recolección estaba más lleno
+    else v -= 2.2 + Math.sin(i * 1.7) * 0.8; // hacia atrás en el tiempo, un poco menos lleno
+  }
+  return puntos;
+}
+
+function renderLinea() {
+  const datos = historialSimulado();
+  const W = 700, H = 220, izq = 36, der = 12, arriba = 12, abajo = 26;
+  const ancho = W - izq - der, alto = H - arriba - abajo;
+  const X = i => izq + ancho * i / (datos.length - 1);
+  const Y = v => arriba + alto * (1 - v / 100);
+  let s = '';
+  [0, 25, 50, 75, 100].forEach(v => {
+    s += `<line x1="${izq}" y1="${Y(v)}" x2="${W - der}" y2="${Y(v)}" stroke="#E2DED3"/>`;
+    s += `<text x="${izq - 6}" y="${Y(v) + 3}" font-size="10" fill="#4B5A56" text-anchor="end">${v}</text>`;
+  });
+  s += `<line x1="${izq}" y1="${Y(80)}" x2="${W - der}" y2="${Y(80)}" stroke="#B23B3B" stroke-width="1.2" stroke-dasharray="4 3"/>`;
+  const path = datos.map((d, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(d.valor).toFixed(1)}`).join(' ');
+  s += `<path d="${path} L${X(datos.length - 1)},${Y(0)} L${X(0)},${Y(0)} Z" fill="#2B6E5C" opacity="0.12"/>`;
+  s += `<path d="${path}" fill="none" stroke="#2B6E5C" stroke-width="2"/>`;
+  datos.forEach((d, i) => {
+    if (i % 4 === 0 || i === datos.length - 1)
+      s += `<text x="${X(i)}" y="${H - 8}" font-size="10" fill="#4B5A56" text-anchor="middle">${i === datos.length - 1 ? 'ahora' : String(d.hora).padStart(2, '0') + ':00'}</text>`;
+  });
+  const u = datos[datos.length - 1];
+  s += `<circle cx="${X(datos.length - 1)}" cy="${Y(u.valor)}" r="4" fill="#2B6E5C"/>`;
+  const svg = document.getElementById('graficoLinea');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+}
+
+function renderRuta() {
+  const orden = [...contenedores].sort((a, b) => horasHastaLleno(a) - horasHastaLleno(b)).slice(0, 8);
+  document.getElementById('tablaRuta').innerHTML = orden.map((c, i) => `
+    <tr>
+      <td class="orden">${i + 1}</td>
+      <td><span class="punto" style="background:${colorSegunLlenado(c.llenado)};margin-right:6px"></span>${c.nombre}<br><span style="color:#4B5A56;font-size:0.74rem">${c.direccion}</span></td>
+      <td class="num">${c.llenado}%</td>
+      <td class="num">${c.ritmo.toFixed(1).replace('.', ',')}</td>
+      <td class="num">${formatoHoras(horasHastaLleno(c))}</td>
+      <td class="num" style="color:${colorBateria(c.bateria)}">${c.bateria}%${bateriaBaja(c) ? ' · cambiar' : ''}</td>
+    </tr>`).join('');
+}
+
+function renderBaterias() {
+  const bajas = contenedores.filter(bateriaBaja).sort((a, b) => a.bateria - b.bateria);
+  document.getElementById('alertasBateria').innerHTML = bajas.length
+    ? `<div class="alerta-bat"><strong>${bajas.length} ${bajas.length === 1 ? 'contenedor necesita' : 'contenedores necesitan'} cambio de batería:</strong> ${bajas.map(c => `${c.nombre} (${c.bateria}%, ~${diasRestantes(c)} días)`).join(', ')}.</div>`
+    : `<div class="ok-bat">Todas las baterías están por encima de ${UMBRAL_BATERIA_BAJA}%.</div>`;
+
+  const datos = [...contenedores].sort((a, b) => a.bateria - b.bateria);
+  const W = 700, fila = 22, izq = 110, der = 90, arriba = 8;
+  const H = arriba + datos.length * fila + 22;
+  const ancho = W - izq - der;
+  let s = '';
+  [0, 25, 50, 75, 100].forEach(v => {
+    const x = izq + ancho * v / 100;
+    s += `<line x1="${x}" y1="${arriba}" x2="${x}" y2="${H - 20}" stroke="#E2DED3"/>`;
+    s += `<text x="${x}" y="${H - 6}" font-size="10" fill="#4B5A56" text-anchor="middle">${v}%</text>`;
+  });
+  datos.forEach((c, i) => {
+    const y = arriba + i * fila;
+    const w = Math.max(2, ancho * c.bateria / 100);
+    s += `<text x="${izq - 8}" y="${y + 14}" font-size="11" fill="#1E2A28" text-anchor="end">${c.nombre}</text>`;
+    s += `<rect x="${izq}" y="${y + 4}" width="${w}" height="${fila - 8}" rx="2" fill="${colorBateria(c.bateria)}" opacity="${bateriaBaja(c) ? 1 : 0.55}"><title>${c.nombre}: ${c.bateria}%</title></rect>`;
+    s += `<text x="${izq + ancho + 8}" y="${y + 14}" font-size="10.5" fill="${colorBateria(c.bateria)}" font-family="ui-monospace, Consolas, monospace">${c.bateria}% · ${diasRestantes(c)} d</text>`;
+  });
+  const xU = izq + ancho * UMBRAL_BATERIA_BAJA / 100;
+  s += `<line x1="${xU}" y1="${arriba - 4}" x2="${xU}" y2="${H - 20}" stroke="#B23B3B" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+  const svg = document.getElementById('graficoBaterias');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+}
+
+function renderEstadisticas() {
+  renderKPIs(); renderDistribucion(); renderBarras(); renderLinea(); renderBaterias(); renderRuta();
+}
+
+/* ---------- Abrir / cerrar el panel ---------- */
+const panel = document.getElementById('panelStats');
+const velo = document.getElementById('velo');
+const btnAbrir = document.getElementById('abrirStats');
+function abrirStats() {
+  renderEstadisticas();
+  panel.classList.add('abierto'); velo.classList.add('abierto');
+  panel.setAttribute('aria-hidden', 'false');
+  document.getElementById('cerrarStats').focus();
+}
+function cerrarStats() {
+  panel.classList.remove('abierto'); velo.classList.remove('abierto');
+  panel.setAttribute('aria-hidden', 'true');
+  btnAbrir.focus();
+}
+btnAbrir.addEventListener('click', abrirStats);
+document.getElementById('cerrarStats').addEventListener('click', cerrarStats);
+velo.addEventListener('click', cerrarStats);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && panel.classList.contains('abierto')) cerrarStats(); });
+
+document.getElementById('btnModo').addEventListener('click', () => {
+  mostrarAviso(null);
+  cambiarModo(modoMapa === 'real' ? 'esquema' : 'real');
+});
+document.getElementById('cerrarAviso').addEventListener('click', () => mostrarAviso(null));
+
+actualizarResumen();
+if (location.protocol === 'file:') {
+  cambiarModo('esquema');
+  mostrarAviso('Abierto desde el archivo: el mapa real solo carga con la página publicada (por ejemplo en GitHub Pages). Se muestra el esquema.');
+} else {
+  cambiarModo('real');
+}
+</script>
+</body>
+</html>
