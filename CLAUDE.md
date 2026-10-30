@@ -65,6 +65,23 @@ El sistema tiene dos partes:
   mantenimiento. El municipio los ve en la ficha y los marca como resueltos.
   Limitación de la demo: reportes y calificaciones se guardan solo en el
   navegador (localStorage); hay 2 reportes y calificaciones de ejemplo.
+- **Foto en los reportes**: el vecino puede sacar una foto (o elegirla de la
+  galería) al reportar. Se achica a 720 px en JPEG (~50 KB), lo que además
+  borra los metadatos del celular (GPS). Cada reporte guarda también qué
+  marcaba el sensor en ese momento (`llenadoSensor`); si el vecino dice
+  "lleno" o "basura afuera" y el sensor marcaba menos de 50%, la ficha avisa
+  "No coincide: revisar si el sensor falla". La foto se ve en la ficha del
+  municipio y en "Mis reportes" (visor en grande). No hay reconocimiento
+  automático de la foto: la mira una persona.
+- **QR por contenedor**: dirección `?vecinos&c=c03`. Abre la vista vecinos
+  con ese contenedor elegido y usa su posición como "dónde estás", sin pedir
+  la ubicación. La ficha del municipio muestra el QR y un botón "Imprimir
+  cartel". En la vista vecinos, "Escanear QR" usa la cámara (o una foto del
+  QR); la imagen se analiza en el navegador y no se guarda. Librerías por CDN,
+  cargadas solo cuando hacen falta: qrcode-generator 1.4.4 (cdnjs, respaldo
+  jsDelivr) para dibujar y jsQR 1.4.0 (jsDelivr) para leer, salvo que el
+  navegador tenga `BarcodeDetector`. Si no cargan, se muestra el link en
+  texto y se puede escanear con la cámara del celular.
 - **Limpieza por barrio**: botón en el mapa real que pinta cada barrio de
   rojo (1) a verde (5) según el promedio de estrellas de sus contenedores,
   menos 0,3 por cada reporte pendiente de "sucio" o "basura afuera". Gris si

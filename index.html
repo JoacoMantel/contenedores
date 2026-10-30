@@ -389,6 +389,51 @@
   .mi-reporte { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; font-size: 0.8rem; }
   .mi-reporte .m-estado { font-size: 0.7rem; font-weight: 700; }
 
+  /* ---------- Fotos de vecinos y códigos QR ---------- */
+  .foto-botones { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .foto-botones label { cursor: pointer; box-shadow: none; font-size: 0.76rem; padding: 7px 11px; }
+  .foto-botones input { display: none; }
+  .foto-previa { display: flex; gap: 10px; align-items: center; margin: 8px 0 2px; font-size: 0.76rem; }
+  .foto-previa img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
+  .foto-previa button { background: none; border: none; color: var(--high); font-size: 0.74rem; font-weight: 600; cursor: pointer; padding: 0; }
+  .btn-foto { display: block; background: none; border: none; padding: 0; margin-top: 5px; cursor: zoom-in; }
+  .btn-foto img { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); display: block; }
+  .r-sensor { font-size: 0.72rem; color: var(--ink-soft); margin-top: 3px; }
+  .r-sensor.no-coincide { color: var(--high); font-weight: 600; }
+  .visor { position: fixed; inset: 0; z-index: 300; background: rgba(20,28,26,0.88); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px; }
+  .visor[hidden] { display: none; }
+  .visor img { max-width: 100%; max-height: 78vh; border-radius: 6px; }
+  .visor p { color: #fff; font-size: 0.8rem; margin: 0; text-align: center; max-width: 480px; }
+  .visor button { background: #fff; color: var(--ink); border: none; border-radius: 16px; padding: 7px 16px; font-weight: 600; cursor: pointer; }
+  .qr-bloque { display: flex; gap: 12px; align-items: center; }
+  .qr-bloque .qr { width: 104px; height: 104px; flex: none; background: #fff; border: 1px solid var(--line); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.64rem; color: var(--ink-soft); text-align: center; }
+  .qr svg { width: 100%; height: 100%; display: block; }
+  .qr-link { font-family: var(--mono); font-size: 0.66rem; word-break: break-all; color: var(--ink-soft); margin-bottom: 6px; }
+  .btn-chico { background: none; border: 1px solid var(--accent); color: var(--accent); border-radius: 4px; padding: 4px 9px; font-size: 0.74rem; font-weight: 600; cursor: pointer; }
+  .app-barra .botones-barra { display: flex; gap: 6px; }
+  .escaner { position: absolute; inset: 0; z-index: 700; background: #111; color: #fff; display: flex; flex-direction: column; }
+  .escaner[hidden] { display: none; }
+  .escaner .e-video { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+  .escaner video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .escaner .mira { position: absolute; top: 50%; left: 50%; width: 210px; height: 210px; transform: translate(-50%, -50%); border: 3px solid #fff; border-radius: 16px; box-shadow: 0 0 0 2000px rgba(0,0,0,0.4); pointer-events: none; }
+  .escaner .e-pie { padding: 14px 16px 18px; display: grid; gap: 8px; }
+  .escaner .e-estado { font-size: 0.82rem; min-height: 2.4em; }
+  .escaner .e-pie .app-boton { text-align: center; box-shadow: none; }
+  .escaner .e-pie label input { display: none; }
+  #cartelQR { display: none; }
+  .cartel { width: 12cm; margin: 1cm auto; border: 2px solid #1E2A28; border-radius: 12px; padding: 0.8cm; text-align: center; font-family: inherit; color: #1E2A28; }
+  .cartel h1 { font-size: 22pt; margin: 0; }
+  .cartel .c-dir { font-size: 11pt; margin: 2pt 0 12pt; }
+  .cartel .c-qr { width: 7cm; height: 7cm; margin: 0 auto; }
+  .cartel .c-qr svg { width: 100%; height: 100%; }
+  .cartel .c-txt { font-size: 12pt; margin: 12pt 0 4pt; }
+  .cartel .c-link { font-family: var(--mono); font-size: 8pt; word-break: break-all; margin: 4pt 0; }
+  .cartel .c-nota { font-size: 9pt; margin: 0; }
+  @media print {
+    body > *:not(#cartelQR) { display: none !important; }
+    #cartelQR { display: block !important; }
+  }
+
   @media (max-width: 760px) {
     main { flex-direction: column; }
     aside { width: 100%; height: 240px; border-right: none; border-bottom: 1px solid var(--line); }
@@ -551,7 +596,10 @@
         <div class="app-titulo">Contenedores cerca</div>
         <div class="app-sub" id="vSub">Zona piloto · datos de ejemplo</div>
       </div>
-      <button class="app-link" id="irMunicipio" title="Volver al panel del municipio">Municipio</button>
+      <div class="botones-barra">
+        <button class="app-link" id="vEscanear" title="Escanear el código QR pegado en un contenedor">Escanear QR</button>
+        <button class="app-link" id="irMunicipio" title="Volver al panel del municipio">Municipio</button>
+      </div>
     </div>
     <div class="app-cuerpo">
       <section class="app-pantalla" id="pantMapa">
@@ -569,6 +617,14 @@
         <div class="app-seccion" id="vMisReportes"></div>
       </section>
       <div class="hoja" id="vHoja" role="dialog" aria-modal="false" aria-label="Detalle del contenedor" hidden></div>
+      <div class="escaner" id="vEscaner" role="dialog" aria-label="Escanear el QR de un contenedor" hidden>
+        <div class="e-video"><video id="vVideo" playsinline muted></video><div class="mira"></div></div>
+        <div class="e-pie">
+          <div class="e-estado" id="vEstadoEscaner" role="status"></div>
+          <label class="app-boton">Elegir una foto del QR<input type="file" accept="image/*" id="vFotoQR"></label>
+          <button class="app-boton principal" id="vCerrarEscaner">Cancelar</button>
+        </div>
+      </div>
     </div>
     <nav class="app-nav" aria-label="Secciones">
       <button data-pant="pantMapa" class="activo"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 5l5-2 6 2 5-2v12l-5 2-6-2-5 2z"/><path d="M7 3v12M13 5v12"/></svg>Mapa</button>
@@ -577,6 +633,16 @@
     </nav>
   </div>
 </div>
+
+<!-- Visor de fotos de los vecinos (sirve en las dos vistas) -->
+<div class="visor" id="visorFoto" role="dialog" aria-modal="true" aria-label="Foto del contenedor" hidden>
+  <img id="visorImg" alt="Foto del contenedor enviada por un vecino">
+  <p id="visorTexto"></p>
+  <button id="visorCerrar">Cerrar</button>
+</div>
+
+<!-- Cartel con el QR para imprimir y pegar en el contenedor (solo se ve al imprimir) -->
+<div id="cartelQR"></div>
 
 <script>
 /*
@@ -675,9 +741,143 @@ let calificaciones = leerGuardado(CLAVE_CALIFICACIONES, []);
 function reportesActivos(c) { return reportes.filter(r => r.contenedor === c.id && !r.resuelto); }
 function totalReportesActivos() { return reportes.filter(r => !r.resuelto).length; }
 
-function agregarReporte(c, tipo, comentario) {
-  reportes.push({ id: 'r' + Date.now(), contenedor: c.id, tipo, comentario: comentario.slice(0, 140), fecha: Date.now() });
-  return guardar(CLAVE_REPORTES, reportes);
+/*
+  FOTO DEL VECINO
+  Cada reporte puede llevar una foto opcional del contenedor. Sirve como
+  evidencia del estado real, independiente del sensor. Además se guarda qué
+  marcaba el sensor en ese momento (llenadoSensor): si un vecino manda la
+  foto de un contenedor desbordado y el sensor marca 20%, probablemente el
+  sensor está fallando (calidad del dato).
+  La foto se achica a 720 px y se vuelve a guardar como JPEG: así ocupa
+  ~50 KB y se borran los metadatos que trae del celular (por ejemplo la
+  ubicación GPS). Si el navegador ya no tiene lugar, el reporte se guarda
+  sin la foto.
+*/
+function agregarReporte(c, tipo, comentario, foto) {
+  const r = { id: 'r' + Date.now(), contenedor: c.id, tipo, comentario: comentario.slice(0, 140), fecha: Date.now(),
+              llenadoSensor: c.llenado, sensorEnVivo: c.vivo?.estado === 'ok' };
+  if (foto) r.foto = foto;
+  reportes.push(r);
+  if (guardar(CLAVE_REPORTES, reportes)) return { ok: true, foto: !!foto };
+  if (foto) {   // no entró la foto: se guarda el reporte sin ella
+    delete r.foto;
+    if (guardar(CLAVE_REPORTES, reportes)) return { ok: true, foto: false, sinLugar: true };
+  }
+  return { ok: false, foto: !!r.foto };
+}
+// Solo se muestran fotos en el formato que genera la página (evita que un dato raro se interprete como HTML)
+function fotoDe(r) { return typeof r.foto === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(r.foto) ? r.foto : null; }
+// Texto que compara el reporte con lo que medía el sensor en ese momento
+function lineaSensor(r) {
+  if (typeof r.llenadoSensor !== 'number') return '';
+  const origen = r.sensorEnVivo ? 'el sensor marcaba' : 'el dato (de ejemplo) era';
+  const raro = TIPOS_REPORTE[r.tipo]?.recolectar && r.llenadoSensor < 50;
+  return `<div class="r-sensor ${raro ? 'no-coincide' : ''}">Al reportarlo, ${origen} ${r.llenadoSensor}%.${raro ? ' No coincide: revisar si el sensor falla.' : ''}</div>`;
+}
+function comprimirFoto(archivo) {
+  return new Promise((ok, mal) => {
+    if (!archivo || !archivo.type.startsWith('image/')) return mal(new Error('No es una imagen'));
+    const url = URL.createObjectURL(archivo);
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 720 / Math.max(img.naturalWidth, img.naturalHeight));
+      const lienzo = document.createElement('canvas');
+      lienzo.width = Math.round(img.naturalWidth * k);
+      lienzo.height = Math.round(img.naturalHeight * k);
+      lienzo.getContext('2d').drawImage(img, 0, 0, lienzo.width, lienzo.height);
+      URL.revokeObjectURL(url);
+      ok(lienzo.toDataURL('image/jpeg', 0.6));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); mal(new Error('No se pudo leer la imagen')); };
+    img.src = url;
+  });
+}
+function abrirVisor(src, texto) {
+  document.getElementById('visorImg').src = src;
+  document.getElementById('visorTexto').textContent = texto || '';
+  document.getElementById('visorFoto').hidden = false;
+  document.getElementById('visorCerrar').focus();
+}
+function cerrarVisor() {
+  document.getElementById('visorFoto').hidden = true;
+  document.getElementById('visorImg').removeAttribute('src');
+}
+// Conecta los botones de foto que haya dentro de un contenedor de la página
+function conectarFotos(raiz) {
+  raiz.querySelectorAll('[data-foto]').forEach(b => b.addEventListener('click', () => {
+    const r = reportes.find(x => x.id === b.dataset.foto);
+    const c = r && contenedores.find(x => x.id === r.contenedor);
+    if (r && fotoDe(r)) abrirVisor(fotoDe(r), `${c ? c.nombre + ' · ' : ''}${(TIPOS_REPORTE[r.tipo] || TIPOS_REPORTE.otro).texto} · ${haceCuanto(r.fecha)}`);
+  }));
+}
+function botonFoto(r) {
+  const f = fotoDe(r);
+  return f ? `<button class="btn-foto" data-foto="${r.id}" aria-label="Ver la foto en grande"><img src="${f}" alt="Foto del contenedor"></button>` : '';
+}
+
+/*
+  CÓDIGO QR DE CADA CONTENEDOR
+  Cada contenedor tiene un QR con la dirección ?vecinos&c=<id>. Al
+  escanearlo con la cámara del celular se abre la vista vecinos con ese
+  contenedor ya elegido. Como el vecino está parado al lado del contenedor,
+  las distancias se calculan desde ahí sin pedirle la ubicación.
+  También se puede escanear desde la app con el botón "Escanear QR".
+  Librerías gratuitas por CDN, se cargan solo cuando hacen falta:
+    - qrcode-generator: dibuja el QR (para el cartel del municipio).
+    - jsQR: lee el QR con la cámara, solo si el navegador no trae un
+      lector propio (BarcodeDetector, que tienen Chrome en Android y otros).
+  Si no cargan (sin conexión), el panel sigue funcionando: se muestra el
+  link en texto y el QR se puede escanear con la cámara del celular.
+*/
+const URL_PUBLICADA = 'https://joacomantel.github.io/contenedores/';
+const LIB_GENERAR_QR = ['https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js',
+                        'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js'];
+const LIB_LEER_QR = ['https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'];
+const scriptsPedidos = {};
+function cargarScript(urls) {
+  const clave = urls[0];
+  if (!scriptsPedidos[clave]) {
+    scriptsPedidos[clave] = (async () => {
+      for (const u of urls) {
+        const ok = await new Promise(listo => {
+          const s = document.createElement('script');
+          s.src = u;
+          s.onload = () => listo(true);
+          s.onerror = () => { s.remove(); listo(false); };
+          document.head.appendChild(s);
+        });
+        if (ok) return;
+      }
+      delete scriptsPedidos[clave];   // para poder reintentar más tarde
+      throw new Error('No se pudo cargar la librería');
+    })();
+  }
+  return scriptsPedidos[clave];
+}
+function direccionQR(c) {
+  const base = location.protocol.startsWith('http') ? location.origin + location.pathname : URL_PUBLICADA;
+  return `${base}?vecinos&c=${c.id}`;
+}
+async function dibujarQR(destino, texto) {
+  try {
+    await cargarScript(LIB_GENERAR_QR);
+    const q = qrcode(0, 'M');      // tamaño automático, corrección de errores media (aguanta suciedad o rayones)
+    q.addData(texto);
+    q.make();
+    destino.innerHTML = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true, alt: 'Código QR del contenedor' });
+    return true;
+  } catch (e) {
+    destino.textContent = 'No se pudo generar el QR (sin conexión). El link funciona igual.';
+    return false;
+  }
+}
+// Acepta la dirección completa del QR o solo el código del contenedor (por ejemplo "c03")
+function contenedorDeQR(texto) {
+  const t = String(texto || '').trim();
+  let id = null;
+  try { id = new URL(t).searchParams.get('c'); } catch (e) {}
+  if (!id && /^c\d{2}$/i.test(t)) id = t.toLowerCase();
+  return contenedores.find(c => c.id === id) || null;
 }
 function resolverReporte(id) {
   const r = reportes.find(x => x.id === id);
@@ -1578,8 +1778,12 @@ function abrirDetalle(id) {
         ? `Está en la ruta de recolección de hoy: <strong>parada ${parada + 1} de ${ruta.orden.length}</strong> (${motivoRecoleccion(c)}).${bateriaBaja(c) ? ' Aprovechar la parada para cambiar la batería.' : ''}`
         : `No necesita recolección por ahora.${bateriaBaja(c) ? ' Ojo: la batería está baja y no hay una parada prevista; conviene programar el cambio.' : ''}`}
     </div>
-    ${bloqueVecinos(c)}`;
+    ${bloqueVecinos(c)}
+    ${bloqueQR(c)}`;
   document.getElementById('volverLista').addEventListener('click', cerrarDetalle);
+  conectarFotos(document.getElementById('detalle'));
+  dibujarQR(document.getElementById('detQR'), direccionQR(c));
+  document.getElementById('imprimirQR').addEventListener('click', () => imprimirCartel(c));
   document.querySelectorAll('#detalle [data-resolver]').forEach(b => b.addEventListener('click', () => {
     resolverReporte(b.dataset.resolver);
     refrescarPanel();
@@ -1596,8 +1800,10 @@ function bloqueVecinos(c) {
     const t = TIPOS_REPORTE[r.tipo] || TIPOS_REPORTE.otro;
     return `<li>
       <div class="r-tipo">${t.texto}${r.ejemplo ? '<span class="etq-ejemplo">de ejemplo</span>' : ''}</div>
-      <div class="r-meta">${haceCuanto(r.fecha)} · ${t.recolectar ? 'se sumó a la ruta de recolección' : 'mantenimiento pendiente'}</div>
+      <div class="r-meta">${haceCuanto(r.fecha)} · ${t.recolectar ? 'se sumó a la ruta de recolección' : 'mantenimiento pendiente'}${fotoDe(r) ? ' · con foto' : ''}</div>
       ${r.comentario ? `<div class="r-comentario">"${esc(r.comentario)}"</div>` : ''}
+      ${botonFoto(r)}
+      ${lineaSensor(r)}
       <button data-resolver="${r.id}">Marcar resuelto</button>
     </li>`;
   }).join('');
@@ -1609,6 +1815,36 @@ function bloqueVecinos(c) {
       ${activos.length ? `<ul class="rep-lista">${items}</ul>` : '<p class="nota">Sin reportes pendientes.</p>'}
       <p class="nota">Demo: los reportes hechos desde la vista vecinos se guardan solo en este navegador.</p>
     </div>`;
+}
+
+// Bloque de la ficha del municipio: QR para pegar en el contenedor
+function bloqueQR(c) {
+  return `
+    <div class="det-bloque">
+      <h3>Código QR del contenedor</h3>
+      <p class="nota">Para pegar en el contenedor. Al escanearlo, el vecino abre la vista vecinos con este contenedor ya elegido, sin compartir su ubicación.</p>
+      <div class="qr-bloque">
+        <div class="qr" id="detQR">Generando…</div>
+        <div>
+          <div class="qr-link">${direccionQR(c)}</div>
+          <button class="btn-chico" id="imprimirQR">Imprimir cartel</button>
+        </div>
+      </div>
+    </div>`;
+}
+async function imprimirCartel(c) {
+  const url = direccionQR(c);
+  document.getElementById('cartelQR').innerHTML = `
+    <div class="cartel">
+      <h1>${c.nombre}</h1>
+      <p class="c-dir">${c.direccion} · ${c.barrio}</p>
+      <div class="c-qr" id="cartelCodigo"></div>
+      <p class="c-txt">Escaneá con la cámara del celular para ver si tiene lugar, encontrar el más cercano con lugar o avisar un problema.</p>
+      <p class="c-link">${url}</p>
+      <p class="c-nota">No hace falta instalar nada ni dar datos personales.</p>
+    </div>`;
+  await dibujarQR(document.getElementById('cartelCodigo'), url);
+  window.print();
 }
 
 function cerrarDetalle() {
@@ -1844,6 +2080,8 @@ let vEligiendo = false;
 let vHojaAbierta = null;      // id del contenedor abierto en la hoja
 let vFormulario = null;       // null | 'reporte' | 'calificar'
 let vGracias = '';
+let vFoto = null;             // foto ya achicada (data URL) que el vecino adjunta al reporte
+let vFotoEstado = '';         // '' | 'procesando' | texto de error
 
 function metrosLineaRecta(a, b) {
   const R = 6371000, rad = Math.PI / 180;
@@ -1884,12 +2122,29 @@ function abrirApp() {
   if (!p.has('vecinos')) { p.set('vecinos', ''); history.replaceState(null, '', '?' + p.toString().replace(/(^|&)vecinos=(?=&|$)/, '$1vecinos')); }
   iniciarMapaApp();
   actualizarApp();
-  if (vMapa) setTimeout(() => { vMapa.invalidateSize(); if (!vPos) encuadrarApp(); }, 50);
+  if (vMapa) setTimeout(() => {
+    vMapa.invalidateSize();
+    if (!vPos) encuadrarApp();
+    else if (vPos.origen === 'qr') encuadrarCerca();
+  }, 50);
+}
+
+// El vecino escaneó el QR de un contenedor: se lo muestra y se usa ese
+// lugar como "dónde estás" (sin pedir la ubicación del celular)
+function irAContenedorPorQR(c) {
+  document.querySelectorAll('.app-nav button').forEach(x => x.classList.toggle('activo', x.dataset.pant === 'pantMapa'));
+  document.querySelectorAll('.app-pantalla').forEach(p => { p.hidden = p.id !== 'pantMapa'; });
+  vEligiendo = false;
+  fijarPosicion(c.lat, c.lng, 'qr');
+  avisoApp(`Escaneaste el QR del ${c.nombre}. Las distancias se calculan desde ahí, sin usar tu ubicación.`);
+  abrirHoja(c.id);
 }
 function cerrarApp() {
   app.hidden = true;
   const p = new URLSearchParams(location.search);
   p.delete('vecinos');
+  p.delete('c');
+  cerrarEscaner();
   history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p : ''));
   if (modoMapa === 'real' && mapaReal) {
     mapaReal.invalidateSize();
@@ -1927,17 +2182,21 @@ function encuadrarApp() {
 function fijarPosicion(lat, lng, origen) {
   vPos = { lat, lng, origen };
   const zona = metrosLineaRecta(vPos, DEPOSITO);
-  if (zona > 4000) avisoApp(`Estás a ${formatoDistancia(zona)} de la zona piloto, así que las distancias no te van a servir. Para probar, tocá "Elegir en el mapa" y marcá un punto de la zona.`);
+  if (origen === 'qr') avisoApp('');   // el aviso lo pone quien escaneó el QR
+  else if (zona > 4000) avisoApp(`Estás a ${formatoDistancia(zona)} de la zona piloto, así que las distancias no te van a servir. Para probar, tocá "Elegir en el mapa" y marcá un punto de la zona.`);
   else avisoApp(origen === 'elegida' ? 'Ubicación elegida en el mapa. Las distancias son en línea recta.' : '');
   if (vMapa) {
     if (!vMarcadorYo) vMarcadorYo = L.marker([lat, lng], { icon: L.divIcon({ className: 'icono-leaflet', iconSize: [18, 18], iconAnchor: [9, 9], html: '<div class="v-yo" title="Vos estás acá"></div>' }), interactive: false, zIndexOffset: 1000 }).addTo(vMapa);
     else vMarcadorYo.setLatLng([lat, lng]);
-    if (zona <= 4000) {
-      const cerca = ordenadosPorDistancia().slice(0, 3).map(x => [x.c.lat, x.c.lng]);
-      vMapa.fitBounds(L.latLngBounds([[lat, lng], ...cerca]), { padding: [50, 50], maxZoom: 17 });
-    }
+    if (zona <= 4000) encuadrarCerca();
   }
   actualizarApp();
+}
+// Encuadra el mapa en el vecino y los 3 contenedores más cercanos
+function encuadrarCerca() {
+  if (!vMapa || !vPos) return;
+  const cerca = ordenadosPorDistancia().slice(0, 3).map(x => [x.c.lat, x.c.lng]);
+  vMapa.fitBounds(L.latLngBounds([[vPos.lat, vPos.lng], ...cerca]), { padding: [50, 50], maxZoom: 17 });
 }
 
 document.getElementById('vUbicar').addEventListener('click', () => {
@@ -2003,18 +2262,20 @@ function renderMisReportes() {
         <div class="m-estado" style="color:${r.resuelto ? COLOR.bajo : '#8A5A12'}">${r.resuelto ? 'Resuelto ' + haceCuanto(r.resuelto) : 'Pendiente'}</div>
         <div><strong>${(TIPOS_REPORTE[r.tipo] || TIPOS_REPORTE.otro).texto}</strong> · ${c ? c.nombre : ''}</div>
         <div class="app-nota" style="margin:0">${haceCuanto(r.fecha)}${r.comentario ? ` · "${esc(r.comentario)}"` : ''}</div>
+        ${botonFoto(r)}
       </div>`;
-    }).join('') : '<p class="app-nota">Todavía no mandaste ningún reporte. Tocá un contenedor en el mapa y después "Reportar un problema".</p>'}
-    <p class="app-nota">Demo: tus reportes y calificaciones se guardan solo en este navegador. En un piloto real se enviarían al municipio.</p>`;
+    }).join('') : '<p class="app-nota">Todavía no mandaste ningún reporte. Tocá un contenedor en el mapa (o escaneá su QR) y después "Reportar un problema".</p>'}
+    <p class="app-nota">Demo: tus reportes, fotos y calificaciones se guardan solo en este navegador. En un piloto real se enviarían al municipio.</p>`;
+  conectarFotos(document.getElementById('vMisReportes'));
 }
 
 function abrirHoja(id) {
-  if (vHojaAbierta !== id) { vFormulario = null; vGracias = ''; }
+  if (vHojaAbierta !== id) { vFormulario = null; vGracias = ''; vFoto = null; vFotoEstado = ''; }
   vHojaAbierta = id;
   renderHoja();
 }
 function cerrarHoja() {
-  vHojaAbierta = null; vFormulario = null; vGracias = '';
+  vHojaAbierta = null; vFormulario = null; vGracias = ''; vFoto = null; vFotoEstado = '';
   document.getElementById('vHoja').hidden = true;
 }
 
@@ -2037,6 +2298,13 @@ function renderHoja() {
         <div class="opciones">${Object.entries(TIPOS_REPORTE).map(([k, t]) =>
           `<label><input type="radio" name="tipo" value="${k}" required><span>${t.texto}</span></label>`).join('')}</div>
         <textarea name="comentario" maxlength="140" placeholder="Comentario opcional (máx. 140 letras). No pongas datos personales."></textarea>
+        <strong style="font-size:0.85rem;display:block;margin-top:10px">Foto del contenedor (opcional)</strong>
+        <div class="app-nota" style="margin:2px 0 0">Muestra el estado real y ayuda a ver si el sensor mide bien. Que no salgan personas ni patentes.</div>
+        <div class="foto-botones">
+          <label class="app-boton">Sacar foto<input type="file" accept="image/*" capture="environment" data-elegir-foto></label>
+          <label class="app-boton">Elegir de la galería<input type="file" accept="image/*" data-elegir-foto></label>
+        </div>
+        <div id="vFotoPrevia"></div>
         <div class="h-acciones">
           <button type="button" class="app-boton" id="vCancelar">Cancelar</button>
           <button type="submit" class="app-boton principal">Enviar reporte</button>
@@ -2058,7 +2326,7 @@ function renderHoja() {
     <div class="hoja-asa"></div>
     <button class="hoja-cerrar" id="vCerrarHoja" aria-label="Cerrar">×</button>
     <h3>${c.nombre}</h3>
-    <div class="h-dir">${c.direccion} · ${c.barrio}${dist !== null ? ` · a ${formatoDistancia(dist)}` : ''}</div>
+    <div class="h-dir">${c.direccion} · ${c.barrio}${dist === null ? '' : dist < 15 && vPos.origen === 'qr' ? ' · estás acá' : ` · a ${formatoDistancia(dist)}`}</div>
     <span class="estado-vecino" style="background:${est.color}">${est.texto}</span>
     <div class="h-barra"><i style="width:${c.llenado}%;background:${est.color}"></i></div>
     <div class="h-fila">${c.llenado}% lleno · ${origenDato(c)}</div>
@@ -2083,14 +2351,26 @@ function renderHoja() {
   });
   document.getElementById('vReportar')?.addEventListener('click', () => { vFormulario = 'reporte'; vGracias = ''; renderHoja(); });
   document.getElementById('vCalificar')?.addEventListener('click', () => { vFormulario = 'calificar'; vGracias = ''; renderHoja(); });
-  document.getElementById('vCancelar')?.addEventListener('click', () => { vFormulario = null; renderHoja(); });
+  document.getElementById('vCancelar')?.addEventListener('click', () => { vFormulario = null; vFoto = null; vFotoEstado = ''; renderHoja(); });
+  if (vFormulario === 'reporte') pintarFotoPrevia();
+  hoja.querySelectorAll('[data-elegir-foto]').forEach(entrada => entrada.addEventListener('change', async () => {
+    const archivo = entrada.files[0];
+    entrada.value = '';               // permite volver a elegir la misma foto
+    if (!archivo) return;
+    vFotoEstado = 'procesando'; pintarFotoPrevia();
+    try { vFoto = await comprimirFoto(archivo); vFotoEstado = ''; }
+    catch (err) { vFoto = null; vFotoEstado = 'No se pudo usar esa imagen. Probá con otra.'; }
+    pintarFotoPrevia();
+  }));
   document.getElementById('vFormReporte')?.addEventListener('submit', e => {
     e.preventDefault();
+    if (vFotoEstado === 'procesando') return;     // espera a que termine de preparar la foto
     const datos = new FormData(e.target);
-    const ok = agregarReporte(c, datos.get('tipo'), (datos.get('comentario') || '').trim());
-    vFormulario = null;
+    const res = agregarReporte(c, datos.get('tipo'), (datos.get('comentario') || '').trim(), vFoto);
+    vFormulario = null; vFoto = null; vFotoEstado = '';
     vGracias = '¡Gracias por avisar! El municipio lo ve en su panel y te avisamos en "Mis reportes" cuando lo resuelva.'
-      + (ok ? ' (Demo: se guarda solo en este navegador.)' : ' (Demo: este navegador no permite guardar, así que se pierde al recargar.)');
+      + (res.sinLugar ? ' La foto no entró en la memoria del navegador, así que el reporte se guardó sin ella.' : '')
+      + (res.ok ? ' (Demo: se guarda solo en este navegador.)' : ' (Demo: este navegador no permite guardar, así que se pierde al recargar.)');
     refrescarPanel();
   });
   hoja.querySelectorAll('[data-estrellas]').forEach(b => b.addEventListener('click', () => {
@@ -2099,6 +2379,18 @@ function renderHoja() {
     vGracias = '¡Gracias por calificar!' + (ok ? '' : ' (Demo: este navegador no permite guardar, así que se pierde al recargar.)');
     refrescarPanel();
   }));
+}
+
+// Vista previa de la foto elegida (se actualiza sola, sin borrar lo que el vecino ya completó)
+function pintarFotoPrevia() {
+  const caja = document.getElementById('vFotoPrevia');
+  if (!caja) return;
+  if (vFotoEstado === 'procesando') caja.innerHTML = '<div class="foto-previa">Preparando la foto…</div>';
+  else if (vFotoEstado) caja.innerHTML = `<div class="foto-previa" style="color:var(--high)">${vFotoEstado}</div>`;
+  else if (vFoto) {
+    caja.innerHTML = `<div class="foto-previa"><img src="${vFoto}" alt="Foto que vas a mandar"><div>Foto lista (~${Math.round(vFoto.length * 0.75 / 1024)} KB).<br><button type="button" id="vQuitarFoto">Quitar foto</button></div></div>`;
+    document.getElementById('vQuitarFoto').addEventListener('click', () => { vFoto = null; pintarFotoPrevia(); });
+  } else caja.innerHTML = '';
 }
 
 // Redibuja la app si está abierta (la llama refrescarPanel cuando cambian los datos)
@@ -2110,8 +2402,123 @@ function actualizarApp() {
   renderMarcadoresApp();
   renderCerca();
   renderMisReportes();
-  if (vHojaAbierta) renderHoja();
+  // con el formulario de reporte abierto no se redibuja, para no borrar lo que el vecino está completando
+  if (vHojaAbierta && vFormulario !== 'reporte') renderHoja();
 }
+
+/*
+  ESCANEAR QR DESDE LA APP
+  La forma más simple es la cámara del celular (abre la página sola). Este
+  botón sirve si el vecino ya tiene la app abierta. La imagen de la cámara
+  se analiza dentro del navegador: no se graba ni se manda a ningún lado.
+*/
+let escaneo = null;             // { stream, timer } mientras la cámara está prendida
+let lectorQR = null;            // promesa con la función que lee un QR de una imagen o video
+function prepararLectorQR() {
+  if (!lectorQR) lectorQR = (async () => {
+    if ('BarcodeDetector' in window) {
+      try {
+        const formatos = await BarcodeDetector.getSupportedFormats();
+        if (formatos.includes('qr_code')) {
+          const detector = new BarcodeDetector({ formats: ['qr_code'] });
+          return async fuente => (await detector.detect(fuente))[0]?.rawValue || null;
+        }
+      } catch (e) {}
+    }
+    await cargarScript(LIB_LEER_QR);
+    const lienzo = document.createElement('canvas');
+    const ctx = lienzo.getContext('2d', { willReadFrequently: true });
+    return async fuente => {
+      const w = fuente.videoWidth || fuente.naturalWidth, h = fuente.videoHeight || fuente.naturalHeight;
+      if (!w || !h) return null;
+      const k = Math.min(1, 800 / Math.max(w, h));
+      lienzo.width = Math.round(w * k); lienzo.height = Math.round(h * k);
+      ctx.drawImage(fuente, 0, 0, lienzo.width, lienzo.height);
+      const img = ctx.getImageData(0, 0, lienzo.width, lienzo.height);
+      return jsQR(img.data, img.width, img.height)?.data || null;
+    };
+  })().catch(e => { lectorQR = null; throw e; });
+  return lectorQR;
+}
+function estadoEscaner(texto) { document.getElementById('vEstadoEscaner').textContent = texto; }
+let ultimoQRRechazado = '';
+function procesarQR(texto) {
+  const c = contenedorDeQR(texto);
+  if (c) { cerrarEscaner(); irAContenedorPorQR(c); return true; }
+  if (texto !== ultimoQRRechazado) {
+    ultimoQRRechazado = texto;
+    estadoEscaner('Ese código no es de un contenedor de la zona piloto. Apuntá al QR pegado en el contenedor.');
+  }
+  return false;
+}
+async function abrirEscaner() {
+  const panel = document.getElementById('vEscaner');
+  const video = document.getElementById('vVideo');
+  cerrarHoja();
+  panel.hidden = false;
+  ultimoQRRechazado = '';
+  document.getElementById('vCerrarEscaner').focus();
+  estadoEscaner('Preparando el lector…');
+  let leer;
+  try { leer = await prepararLectorQR(); }
+  catch (e) { estadoEscaner('No se pudo cargar el lector de QR (sin conexión). Podés escanearlo con la cámara del celular, que abre esta misma página.'); return; }
+  if (!navigator.mediaDevices?.getUserMedia) {
+    estadoEscaner('Este navegador no deja usar la cámara desde la página. Probá "Elegir una foto del QR" o escanealo con la cámara del celular.');
+    return;
+  }
+  estadoEscaner('Pidiendo permiso para usar la cámara…');
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }); }
+  catch (e) {
+    estadoEscaner('No se pudo abrir la cámara (permiso denegado o el equipo no tiene). Probá "Elegir una foto del QR" o escanealo con la cámara del celular.');
+    return;
+  }
+  if (panel.hidden) { stream.getTracks().forEach(t => t.stop()); return; }   // se cerró mientras pedía permiso
+  video.srcObject = stream;
+  try { await video.play(); } catch (e) {}
+  estadoEscaner('Apuntá al código QR pegado en el contenedor.');
+  let ocupado = false;
+  escaneo = { stream, timer: setInterval(async () => {
+    if (ocupado || video.readyState < 2) return;
+    ocupado = true;
+    try { const texto = await leer(video); if (texto) procesarQR(texto); } catch (e) {}
+    ocupado = false;
+  }, 300) };
+}
+function cerrarEscaner() {
+  const panel = document.getElementById('vEscaner');
+  if (escaneo) { clearInterval(escaneo.timer); escaneo.stream.getTracks().forEach(t => t.stop()); escaneo = null; }
+  document.getElementById('vVideo').srcObject = null;
+  panel.hidden = true;
+}
+document.getElementById('vEscanear').addEventListener('click', abrirEscaner);
+document.getElementById('vCerrarEscaner').addEventListener('click', cerrarEscaner);
+document.getElementById('vFotoQR').addEventListener('change', async e => {
+  const archivo = e.target.files[0];
+  e.target.value = '';
+  if (!archivo) return;
+  estadoEscaner('Buscando el QR en la foto…');
+  try {
+    const leer = await prepararLectorQR();
+    const img = new Image();
+    const url = URL.createObjectURL(archivo);
+    img.src = url;
+    await img.decode();
+    const texto = await leer(img);
+    URL.revokeObjectURL(url);
+    if (!texto) estadoEscaner('No se encontró un QR en esa foto. Probá con una más cerca y derecha.');
+    else procesarQR(texto);
+  } catch (err) {
+    estadoEscaner('No se pudo leer esa foto (o el lector no cargó por falta de conexión).');
+  }
+});
+document.getElementById('visorCerrar').addEventListener('click', cerrarVisor);
+document.getElementById('visorFoto').addEventListener('click', e => { if (e.target.id === 'visorFoto') cerrarVisor(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (!document.getElementById('visorFoto').hidden) { cerrarVisor(); e.stopImmediatePropagation(); }
+  else if (!document.getElementById('vEscaner').hidden) { cerrarEscaner(); e.stopImmediatePropagation(); }
+}, true);
 
 document.querySelectorAll('.app-nav button').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('.app-nav button').forEach(x => x.classList.toggle('activo', x === b));
@@ -2142,7 +2549,13 @@ if (contenedorVivo) {
   leerThingSpeak();
   setInterval(leerThingSpeak, THINGSPEAK.consultarCadaMin * 60000);
 }
-if (new URLSearchParams(location.search).has('vecinos')) abrirApp();
+// ?vecinos abre la vista vecinos; ?vecinos&c=c03 (el QR de un contenedor) además abre ese contenedor
+const paramsInicio = new URLSearchParams(location.search);
+if (paramsInicio.has('vecinos')) {
+  abrirApp();
+  const delQR = contenedores.find(c => c.id === paramsInicio.get('c'));
+  if (delQR) irAContenedorPorQR(delQR);
+}
 </script>
 </body>
 </html>
