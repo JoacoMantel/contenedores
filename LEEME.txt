@@ -1,0 +1,32 @@
+﻿PROYECTO FINAL INTEGRADOR - CIUDADES INTELIGENTES
+Contenedores inteligentes: recolección según el llenado real
+
+Comisión 15FN
+Integrantes: Joaquín Mantel, Nicolás Lucini y Luis Guillermo Ivanoff
+
+
+LINKS
+
+Repositorio con todo el código:
+https://github.com/JoacoMantel/contenedores
+
+Simulador en Wokwi (ESP32 + sensor ultrasónico):
+https://wokwi.com/projects/476161721716272129
+
+Panel web publicado:
+https://joacomantel.github.io/contenedores/
+
+Datos en vivo en ThingSpeak:
+https://thingspeak.mathworks.com/channels/3486377
+
+
+QUÉ HAY EN ESTA ENTREGA
+
+index.html: código del panel web.
+simulador/: código del ESP32 (sketch.ino) y circuito de Wokwi (diagram.json).
+docs/Proyecto_Final_Integrador_Contenedores_Inteligentes.pdf: entrega final en PDF.
+docs/Proyecto_Final_Integrador_Ciudades_Inteligentes.html: formulario completo.
+docs/Proyecto_Final_Integrador_respaldo.json: respaldo JSON del formulario.
+docs/Informe_Contenedor_Inteligente.docx: informe del proyecto.
+docs/Diagrama_arquitectura.png: diagrama de arquitectura.
+README.md: descripción del proyecto y cómo probarlo.
