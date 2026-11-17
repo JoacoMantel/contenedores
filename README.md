@@ -30,7 +30,8 @@ Proponemos medir el llenado de cada contenedor y armar la ruta del día según l
 | Archivo | Qué es |
 |---|---|
 | `index.html` | Código del panel web (HTML, CSS y JavaScript en un solo archivo) |
-| `simulador/` | Código del ESP32 (`sketch.ino`) y circuito de Wokwi (`diagram.json`) |
+| `simulador/sketch.ino` | Código del ESP32 (Arduino/C++): medición, alerta, batería y envío a ThingSpeak |
+| `simulador/diagram.json` | Circuito de Wokwi: ESP32, sensor HC-SR04 y potenciómetro que simula la batería |
 | `docs/Proyecto_Final_Integrador_Contenedores_Inteligentes.pdf` | Entrega final en PDF |
 | `docs/Proyecto_Final_Integrador_Ciudades_Inteligentes.html` | Formulario del trabajo integrador, con las respuestas cargadas |
 | `docs/Proyecto_Final_Integrador_respaldo.json` | Respaldo JSON del formulario (se importa con "Importar JSON") |
@@ -41,6 +42,12 @@ Proponemos medir el llenado de cada contenedor y armar la ruta del día según l
 
 - **Panel:** abrir el link publicado. Si se abre `index.html` desde la computadora, el mapa real no carga y el panel muestra un mapa esquemático.
 - **Simulador:** abrir el link de Wokwi y tocar "Play". Con el sensor ultrasónico se cambia la distancia: a 30 cm marca 25 % sin alerta; a 5 cm marca 87,5 % y dispara la alerta. Si se desconecta el cable ECHO, registra "SIN DATO" sin alertas falsas.
+
+## Sobre el código del simulador
+
+En la copia de este repositorio la clave de escritura de ThingSpeak se reemplazó por `TU_WRITE_API_KEY`, para no publicarla. El proyecto en Wokwi tiene la clave real y envía los datos al canal 3486377.
+
+Conexiones: sensor HC-SR04 con TRIG en el pin 5 y ECHO en el pin 18; potenciómetro en el pin 34.
 
 ## Aclaración
 

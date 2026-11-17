@@ -7,7 +7,7 @@ sigue rutas fijas, sin saber qué contenedor está lleno. Propuesta: medir el
 nivel de llenado de cada contenedor y recolectar según la demanda real.
 
 El sistema tiene dos partes:
-1. **Simulador en Wokwi** (fuera de este repositorio): ESP32 + sensor
+1. **Simulador en Wokwi** (copia del código en `simulador/`, proyecto https://wokwi.com/projects/476161721716272129): ESP32 + sensor
    ultrasónico HC-SR04 que mide la distancia hasta la basura y calcula el
    porcentaje de llenado. Incluye un potenciómetro en GPIO 34 que simula la
    tensión de la batería.
