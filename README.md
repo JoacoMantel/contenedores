@@ -3,7 +3,7 @@
 <img src="docs/Logo.png" alt="Logo del proyecto" width="120">
 
 Proyecto Final Integrador de **Ciudades Inteligentes para el Desarrollo** (UCA, Ingeniería en Informática).
-Comisión 15FN. Integrantes: Joaquín Mantel, Nicolás Lucini y Luis Ivanoff.
+Comisión 15FN. Integrantes: Joaquín Mantel, Nicolás Lucini y Luis Guillermo Ivanoff.
 
 ## El problema
 
@@ -23,7 +23,7 @@ Proponemos medir el llenado de cada contenedor y armar la ruta del día según l
 
 - Panel publicado: https://joacomantel.github.io/contenedores/
 - Datos en ThingSpeak: https://thingspeak.mathworks.com/channels/3486377
-- Simulación en Wokwi: _(link pendiente)_
+- Simulación en Wokwi: https://wokwi.com/projects/476161721716272129
 
 ## Contenido del repositorio
 
